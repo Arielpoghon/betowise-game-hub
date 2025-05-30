@@ -74,7 +74,7 @@ export function BettingDashboard() {
   const fetchMatches = async () => {
     const { data, error } = await supabase
       .from('matches')
-      .select('*')
+      .select('id, title, team_a, team_b, start_time, status, odds_team_a, odds_team_b, odds_draw')
       .order('start_time', { ascending: true });
 
     if (error) {
@@ -89,8 +89,25 @@ export function BettingDashboard() {
     const { data, error } = await supabase
       .from('bets')
       .select(`
-        *,
-        matches (*)
+        id,
+        match_id,
+        amount,
+        team_choice,
+        odds,
+        potential_payout,
+        status,
+        created_at,
+        matches!inner (
+          id,
+          title,
+          team_a,
+          team_b,
+          start_time,
+          status,
+          odds_team_a,
+          odds_team_b,
+          odds_draw
+        )
       `)
       .order('created_at', { ascending: false });
 
