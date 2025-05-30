@@ -4,55 +4,46 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+
+interface Match {
+  id: string;
+  title: string;
+  start_time: string;
+  status: string;
+  created_at: string;
+}
 
 interface BetDialogProps {
   open: boolean;
   onClose: () => void;
   onConfirm: (amount: number) => void;
-  match: any;
+  match: Match | null;
   team: string;
   odds: number;
   userBalance: number;
 }
 
-export function BetDialog({ open, onClose, onConfirm, match, team, odds, userBalance }: BetDialogProps) {
+export function BetDialog({ 
+  open, 
+  onClose, 
+  onConfirm, 
+  match, 
+  team, 
+  odds, 
+  userBalance 
+}: BetDialogProps) {
   const [amount, setAmount] = useState('');
-  const { toast } = useToast();
 
   const handleConfirm = () => {
     const betAmount = parseFloat(amount);
-    
-    if (isNaN(betAmount) || betAmount <= 0) {
-      toast({
-        title: "Invalid amount",
-        description: "Please enter a valid bet amount",
-        variant: "destructive"
-      });
-      return;
+    if (betAmount > 0 && betAmount <= userBalance) {
+      onConfirm(betAmount);
+      setAmount('');
+      onClose();
     }
-    
-    if (betAmount > userBalance) {
-      toast({
-        title: "Insufficient balance",
-        description: "You don't have enough balance for this bet",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    onConfirm(betAmount);
-    setAmount('');
-    onClose();
   };
 
-  const getTeamDisplay = () => {
-    if (team === 'team_a') return match.team_a;
-    if (team === 'team_b') return match.team_b;
-    return 'Draw';
-  };
-
-  const potentialWin = amount ? (parseFloat(amount) * odds).toFixed(2) : '0.00';
+  const potentialWin = parseFloat(amount) * odds || 0;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -62,12 +53,9 @@ export function BetDialog({ open, onClose, onConfirm, match, team, odds, userBal
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <h3 className="font-semibold">{match?.title}</h3>
+            <h3 className="font-medium">{match?.title}</h3>
             <p className="text-sm text-muted-foreground">
-              Betting on: <span className="font-medium">{getTeamDisplay()}</span>
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Odds: <span className="font-medium">{odds}x</span>
+              Betting on: {team} (Odds: {odds}x)
             </p>
           </div>
           
@@ -84,23 +72,28 @@ export function BetDialog({ open, onClose, onConfirm, match, team, odds, userBal
               max={userBalance}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Balance: ${userBalance.toFixed(2)}
+              Available balance: ${userBalance.toFixed(2)}
             </p>
           </div>
           
-          {amount && (
-            <div className="bg-muted p-3 rounded-lg">
-              <p className="text-sm">
-                Potential win: <span className="font-semibold text-green-600">${potentialWin}</span>
-              </p>
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex justify-between text-sm">
+              <span>Potential Win:</span>
+              <span className="font-medium text-green-600">
+                ${potentialWin.toFixed(2)}
+              </span>
             </div>
-          )}
+          </div>
           
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>
-            <Button onClick={handleConfirm} className="flex-1">
+            <Button 
+              onClick={handleConfirm} 
+              className="flex-1"
+              disabled={!amount || parseFloat(amount) <= 0 || parseFloat(amount) > userBalance}
+            >
               Place Bet
             </Button>
           </div>

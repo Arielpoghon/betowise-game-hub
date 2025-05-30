@@ -15,24 +15,19 @@ import { Wallet, LogOut, Plus } from 'lucide-react';
 interface Match {
   id: string;
   title: string;
-  team_a: string;
-  team_b: string;
   start_time: string;
   status: string;
-  odds_team_a: number;
-  odds_team_b: number;
-  odds_draw: number;
+  created_at: string;
 }
 
 interface Bet {
-  id: string;
+  id: number;
   match_id: string;
   amount: number;
   team_choice: string;
-  odds: number;
-  potential_payout: number;
   status: string;
   created_at: string;
+  user_id: string;
   matches: Match;
 }
 
@@ -41,7 +36,7 @@ export function BettingDashboard() {
   const [userBets, setUserBets] = useState<Bet[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<string>('');
-  const [selectedOdds, setSelectedOdds] = useState<number>(0);
+  const [selectedOdds, setSelectedOdds] = useState<number>(2.0);
   const [showBetDialog, setShowBetDialog] = useState(false);
   const [showDepositDialog, setShowDepositDialog] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -74,7 +69,7 @@ export function BettingDashboard() {
   const fetchMatches = async () => {
     const { data, error } = await supabase
       .from('matches')
-      .select('id, title, team_a, team_b, start_time, status, odds_team_a, odds_team_b, odds_draw')
+      .select('id, title, start_time, status, created_at')
       .order('start_time', { ascending: true });
 
     if (error) {
@@ -93,20 +88,15 @@ export function BettingDashboard() {
         match_id,
         amount,
         team_choice,
-        odds,
-        potential_payout,
         status,
         created_at,
+        user_id,
         matches!inner (
           id,
           title,
-          team_a,
-          team_b,
           start_time,
           status,
-          odds_team_a,
-          odds_team_b,
-          odds_draw
+          created_at
         )
       `)
       .order('created_at', { ascending: false });
@@ -137,8 +127,6 @@ export function BettingDashboard() {
         match_id: selectedMatch.id,
         amount,
         team_choice: selectedTeam,
-        odds: selectedOdds,
-        potential_payout: potentialPayout,
         status: 'pending'
       });
 
@@ -154,7 +142,7 @@ export function BettingDashboard() {
       
       toast({
         title: "Bet placed successfully!",
-        description: `You bet $${amount} on ${getTeamDisplay(selectedTeam, selectedMatch)}`
+        description: `You bet $${amount} on ${selectedTeam} for ${selectedMatch.title}`
       });
       
       fetchUserBets();
@@ -169,12 +157,6 @@ export function BettingDashboard() {
       title: "Deposit successful!",
       description: `$${amount} has been added to your balance.`
     });
-  };
-
-  const getTeamDisplay = (team: string, match: Match) => {
-    if (team === 'team_a') return match.team_a;
-    if (team === 'team_b') return match.team_b;
-    return 'Draw';
   };
 
   const getBetStatusColor = (status: string) => {
@@ -224,12 +206,35 @@ export function BettingDashboard() {
             <h2 className="text-xl font-semibold mb-6">Available Matches</h2>
             <div className="space-y-4">
               {matches.map((match) => (
-                <MatchCard
-                  key={match.id}
-                  match={match}
-                  onBet={handleBetClick}
-                  disabled={!profile || profile.balance <= 0}
-                />
+                <Card key={match.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{match.title}</CardTitle>
+                    <p className="text-sm text-gray-500">
+                      Start time: {new Date(match.start_time).toLocaleString()}
+                    </p>
+                    <Badge className={match.status === 'open' ? 'bg-green-500' : 'bg-gray-500'}>
+                      {match.status}
+                    </Badge>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex gap-4">
+                      <Button 
+                        onClick={() => handleBetClick(match, 'Team A', 2.0)}
+                        disabled={!profile || profile.balance <= 0 || match.status !== 'open'}
+                        className="flex-1"
+                      >
+                        Team A (2.0x)
+                      </Button>
+                      <Button 
+                        onClick={() => handleBetClick(match, 'Team B', 2.0)}
+                        disabled={!profile || profile.balance <= 0 || match.status !== 'open'}
+                        className="flex-1"
+                      >
+                        Team B (2.0x)
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
@@ -250,10 +255,9 @@ export function BettingDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-1 text-sm">
-                      <p>Team: <span className="font-medium">{getTeamDisplay(bet.team_choice, bet.matches)}</span></p>
+                      <p>Team: <span className="font-medium">{bet.team_choice}</span></p>
                       <p>Bet: <span className="font-medium">${bet.amount}</span></p>
-                      <p>Odds: <span className="font-medium">{bet.odds}x</span></p>
-                      <p>Potential win: <span className="font-medium text-green-600">${bet.potential_payout.toFixed(2)}</span></p>
+                      <p>Date: <span className="font-medium">{new Date(bet.created_at).toLocaleDateString()}</span></p>
                     </div>
                   </CardContent>
                 </Card>
