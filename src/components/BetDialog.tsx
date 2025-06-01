@@ -49,7 +49,7 @@ export function BetDialog({
     }
   };
 
-  const potentialWin = odds ? parseFloat(amount) * odds.odds : 0;
+  const potentialWin = odds ? parseFloat(amount || '0') * odds.odds : 0;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -61,10 +61,10 @@ export function BetDialog({
           <div>
             <h3 className="font-medium">{match?.title}</h3>
             <p className="text-sm text-muted-foreground">
-              Market: {market?.name}
+              Market: {market?.name || 'Winner'}
             </p>
             <p className="text-sm text-muted-foreground">
-              Selection: {odds?.outcome} (Odds: {odds?.odds})
+              Selection: {odds?.outcome} (Odds: {odds?.odds || '2.0'})
             </p>
           </div>
           

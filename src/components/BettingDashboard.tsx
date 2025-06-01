@@ -18,57 +18,24 @@ interface Match {
   start_time: string;
   status: string;
   created_at: string;
-  home_team?: { name: string; logo_url?: string };
-  away_team?: { name: string; logo_url?: string };
-  league?: { name: string; country?: string };
 }
 
-interface Market {
-  id: string;
-  match_id: string;
-  market_type: string;
-  name: string;
-  odds: Array<{
-    id: string;
-    outcome_name: string;
-    odds_decimal: number;
-    is_active: boolean;
-  }>;
-}
-
-interface Bet {
-  id: string;
+interface UserBet {
+  id: number;
   user_id: string;
-  total_stake: number;
-  potential_payout: number;
-  actual_payout: number;
+  match_id: string;
+  team_choice: string;
+  amount: number;
   status: string;
-  bet_type: string;
-  placed_at: string;
-  settled_at?: string;
-  bet_selections: Array<{
-    id: string;
-    selected_outcome: string;
-    odds_at_placement: number;
-    status: string;
-    market: {
-      name: string;
-      match: {
-        title?: string;
-        home_team?: { name: string };
-        away_team?: { name: string };
-      };
-    };
-  }>;
+  created_at: string;
 }
 
 export function BettingDashboard() {
   const [matches, setMatches] = useState<Match[]>([]);
-  const [markets, setMarkets] = useState<Market[]>([]);
-  const [userBets, setUserBets] = useState<Bet[]>([]);
+  const [userBets, setUserBets] = useState<UserBet[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
-  const [selectedOdds, setSelectedOdds] = useState<{ id: string; outcome: string; odds: number } | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<string>('');
+  const [selectedOdds, setSelectedOdds] = useState<number>(0);
   const [showBetDialog, setShowBetDialog] = useState(false);
   const [showDepositDialog, setShowDepositDialog] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -87,11 +54,6 @@ export function BettingDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, fetchMatches)
       .subscribe();
 
-    const oddsSubscription = supabase
-      .channel('odds-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'odds' }, fetchMatches)
-      .subscribe();
-
     const betsSubscription = supabase
       .channel('bets-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bets' }, fetchUserBets)
@@ -99,26 +61,15 @@ export function BettingDashboard() {
 
     return () => {
       supabase.removeChannel(matchesSubscription);
-      supabase.removeChannel(oddsSubscription);
       supabase.removeChannel(betsSubscription);
     };
   }, []);
 
   const fetchMatches = async () => {
-    // Fetch matches with teams and leagues
     const { data: matchesData, error: matchesError } = await supabase
       .from('matches')
-      .select(`
-        id,
-        match_date,
-        status,
-        home_score,
-        away_score,
-        home_team:teams!matches_home_team_id_fkey(name, logo_url),
-        away_team:teams!matches_away_team_id_fkey(name, logo_url),
-        league:leagues(name, country)
-      `)
-      .order('match_date', { ascending: true });
+      .select('*')
+      .order('start_time', { ascending: true });
 
     if (matchesError) {
       console.error('Error fetching matches:', matchesError);
@@ -126,43 +77,7 @@ export function BettingDashboard() {
       return;
     }
 
-    // Transform the data to match our interface
-    const formattedMatches = matchesData?.map(match => ({
-      id: match.id,
-      title: `${match.home_team?.name} vs ${match.away_team?.name}`,
-      start_time: match.match_date,
-      status: match.status,
-      created_at: match.match_date,
-      home_team: match.home_team,
-      away_team: match.away_team,
-      league: match.league
-    })) || [];
-
-    setMatches(formattedMatches);
-
-    // Fetch markets and odds for these matches
-    if (matchesData && matchesData.length > 0) {
-      const matchIds = matchesData.map(match => match.id);
-      
-      const { data: marketsData, error: marketsError } = await supabase
-        .from('markets')
-        .select(`
-          id,
-          match_id,
-          market_type,
-          name,
-          odds(id, outcome_name, odds_decimal, is_active)
-        `)
-        .in('match_id', matchIds)
-        .eq('is_active', true);
-
-      if (marketsError) {
-        console.error('Error fetching markets:', marketsError);
-      } else {
-        setMarkets(marketsData || []);
-      }
-    }
-
+    setMatches(matchesData || []);
     setLoading(false);
   };
 
@@ -171,81 +86,38 @@ export function BettingDashboard() {
 
     const { data: betsData, error: betsError } = await supabase
       .from('bets')
-      .select(`
-        id,
-        user_id,
-        total_stake,
-        potential_payout,
-        actual_payout,
-        status,
-        bet_type,
-        placed_at,
-        settled_at,
-        bet_selections(
-          id,
-          selected_outcome,
-          odds_at_placement,
-          status,
-          market:markets(
-            name,
-            match:matches(
-              id,
-              home_team:teams!matches_home_team_id_fkey(name),
-              away_team:teams!matches_away_team_id_fkey(name)
-            )
-          )
-        )
-      `)
+      .select('*')
       .eq('user_id', profile.id)
-      .order('placed_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (betsError) {
       console.error('Error fetching bets:', betsError);
     } else {
-      // Transform the data to include match titles
-      const formattedBets = betsData?.map(bet => ({
-        ...bet,
-        bet_selections: bet.bet_selections.map(selection => ({
-          ...selection,
-          market: {
-            ...selection.market,
-            match: {
-              ...selection.market.match,
-              title: `${selection.market.match.home_team?.name} vs ${selection.market.match.away_team?.name}`
-            }
-          }
-        }))
-      })) || [];
-
-      setUserBets(formattedBets);
+      setUserBets(betsData || []);
     }
   };
 
-  const handleBetClick = (match: Match, marketId: string, oddsId: string, outcome: string, odds: number) => {
-    const market = markets.find(m => m.id === marketId);
-    if (!market) return;
-
+  const handleBetClick = (match: Match, team: string, odds: number) => {
     setSelectedMatch(match);
-    setSelectedMarket(market);
-    setSelectedOdds({ id: oddsId, outcome, odds });
+    setSelectedTeam(team);
+    setSelectedOdds(odds);
     setShowBetDialog(true);
   };
 
   const handlePlaceBet = async (amount: number) => {
-    if (!selectedMatch || !selectedMarket || !selectedOdds || !profile) return;
+    if (!selectedMatch || !profile) return;
 
     try {
-      // Use the place_bet function for proper bet placement
-      const { data, error } = await supabase.rpc('place_bet', {
-        p_user_id: profile.id,
-        p_selections: JSON.stringify([{
-          market_id: selectedMarket.id,
-          odds_id: selectedOdds.id,
-          outcome: selectedOdds.outcome
-        }]),
-        p_total_stake: amount,
-        p_bet_type: 'single'
-      });
+      // Insert bet record
+      const { data, error } = await supabase
+        .from('bets')
+        .insert({
+          user_id: profile.id,
+          match_id: selectedMatch.id,
+          team_choice: selectedTeam,
+          amount: amount,
+          status: 'pending'
+        });
 
       if (error) {
         toast({
@@ -254,17 +126,16 @@ export function BettingDashboard() {
           variant: "destructive"
         });
       } else {
+        // Update user balance
+        await updateBalance(profile.balance - amount);
+        
         toast({
           title: "Bet placed successfully!",
-          description: `You bet $${amount} on ${selectedOdds.outcome} for ${selectedMatch.title}`
+          description: `You bet $${amount} on ${selectedTeam} for ${selectedMatch.title}`
         });
         
         // Refresh data
         fetchUserBets();
-        if (profile) {
-          // Update balance locally (it's already updated by the function)
-          await updateBalance(profile.balance - amount);
-        }
       }
     } catch (error) {
       console.error('Error placing bet:', error);
@@ -291,13 +162,8 @@ export function BettingDashboard() {
       case 'won': return 'bg-green-500';
       case 'lost': return 'bg-red-500';
       case 'void': return 'bg-gray-500';
-      case 'cashout': return 'bg-blue-500';
       default: return 'bg-yellow-500';
     }
-  };
-
-  const getMatchMarketsForDisplay = (matchId: string) => {
-    return markets.filter(market => market.match_id === matchId && market.odds.length > 0);
   };
 
   if (loading) {
@@ -338,56 +204,14 @@ export function BettingDashboard() {
           <div className="lg:col-span-2">
             <h2 className="text-xl font-semibold mb-6">Available Matches</h2>
             <div className="space-y-4">
-              {matches.map((match) => {
-                const matchMarkets = getMatchMarketsForDisplay(match.id);
-                return (
-                  <Card key={match.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-lg">{match.title}</CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            {match.league?.name} • {new Date(match.start_time).toLocaleString()}
-                          </p>
-                        </div>
-                        <Badge className={match.status === 'scheduled' ? 'bg-green-500' : 'bg-gray-500'}>
-                          {match.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {matchMarkets.length > 0 ? (
-                        <div className="space-y-3">
-                          {matchMarkets.slice(0, 2).map((market) => (
-                            <div key={market.id}>
-                              <h4 className="text-sm font-medium text-gray-700 mb-2">{market.name}</h4>
-                              <div className="grid grid-cols-3 gap-2">
-                                {market.odds.filter(odd => odd.is_active).map((odd) => (
-                                  <Button
-                                    key={odd.id}
-                                    onClick={() => handleBetClick(match, market.id, odd.id, odd.outcome_name, odd.odds_decimal)}
-                                    disabled={!profile || profile.balance <= 0 || match.status !== 'scheduled'}
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs"
-                                  >
-                                    <div className="text-center">
-                                      <div>{odd.outcome_name}</div>
-                                      <div className="font-bold">{odd.odds_decimal}</div>
-                                    </div>
-                                  </Button>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No betting markets available</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              {matches.map((match) => (
+                <MatchCard
+                  key={match.id}
+                  match={match}
+                  onBet={handleBetClick}
+                  disabled={!profile || profile.balance <= 0}
+                />
+              ))}
             </div>
           </div>
 
@@ -400,7 +224,7 @@ export function BettingDashboard() {
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
                       <CardTitle className="text-sm">
-                        {bet.bet_selections[0]?.market?.match?.title || 'Unknown Match'}
+                        Match ID: {bet.match_id}
                       </CardTitle>
                       <Badge className={getBetStatusColor(bet.status)}>
                         {bet.status}
@@ -409,14 +233,9 @@ export function BettingDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-1 text-sm">
-                      <p>Market: <span className="font-medium">{bet.bet_selections[0]?.market?.name}</span></p>
-                      <p>Selection: <span className="font-medium">{bet.bet_selections[0]?.selected_outcome}</span></p>
-                      <p>Stake: <span className="font-medium">${bet.total_stake}</span></p>
-                      <p>Potential: <span className="font-medium">${bet.potential_payout}</span></p>
-                      {bet.actual_payout > 0 && (
-                        <p>Payout: <span className="font-medium text-green-600">${bet.actual_payout}</span></p>
-                      )}
-                      <p>Date: <span className="font-medium">{new Date(bet.placed_at).toLocaleDateString()}</span></p>
+                      <p>Team: <span className="font-medium">{bet.team_choice}</span></p>
+                      <p>Stake: <span className="font-medium">${bet.amount}</span></p>
+                      <p>Date: <span className="font-medium">{new Date(bet.created_at).toLocaleDateString()}</span></p>
                     </div>
                   </CardContent>
                 </Card>
@@ -440,8 +259,8 @@ export function BettingDashboard() {
         onClose={() => setShowBetDialog(false)}
         onConfirm={handlePlaceBet}
         match={selectedMatch}
-        market={selectedMarket}
-        odds={selectedOdds}
+        market={{ id: 'default', name: 'Winner', market_type: '1x2' }}
+        odds={selectedOdds > 0 ? { id: 'default', outcome: selectedTeam, odds: selectedOdds } : null}
         userBalance={profile?.balance || 0}
       />
       
