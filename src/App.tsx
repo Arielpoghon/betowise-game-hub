@@ -25,7 +25,7 @@ function AppContent() {
     );
   }
 
-  // Show authenticated dashboard if user is logged in
+  // Show authenticated betting dashboard if user is logged in
   if (user) {
     return (
       <BrowserRouter>

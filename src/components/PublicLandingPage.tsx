@@ -7,12 +7,11 @@ import { AuthForm } from './AuthForm';
 import { 
   Menu, 
   Search, 
-  Sun, 
-  ChevronDown,
-  Trophy,
-  Clock,
+  Bell, 
   TrendingUp,
-  Plus
+  Plus,
+  Trophy,
+  Clock
 } from 'lucide-react';
 
 interface Match {
@@ -87,7 +86,7 @@ export function PublicLandingPage() {
   const [selectedSport, setSelectedSport] = useState('Soccer');
 
   if (showAuthForm) {
-    return <AuthForm />;
+    return <AuthForm onBack={() => setShowAuthForm(false)} />;
   }
 
   return (
@@ -100,7 +99,7 @@ export function PublicLandingPage() {
             <div className="flex items-center gap-6">
               <Menu className="h-6 w-6 cursor-pointer" />
               <div className="text-2xl font-bold text-yellow-400">
-                Betika!
+                BetoWise!
               </div>
             </div>
 
@@ -124,7 +123,7 @@ export function PublicLandingPage() {
                 <Badge variant="destructive" className="text-xs">14</Badge>
               </div>
               <span className="cursor-pointer">Virtuals</span>
-              <span className="cursor-pointer">Betika Fasta</span>
+              <span className="cursor-pointer">BetoWise Fasta</span>
               <span className="cursor-pointer">Crash Games</span>
               <span className="cursor-pointer">Live Score</span>
             </nav>
@@ -146,7 +145,7 @@ export function PublicLandingPage() {
               >
                 Register
               </Button>
-              <Sun className="h-5 w-5 cursor-pointer" />
+              <Bell className="h-5 w-5 cursor-pointer" />
               <Search className="h-5 w-5 cursor-pointer" />
             </div>
           </div>
@@ -202,25 +201,6 @@ export function PublicLandingPage() {
                 <button className="px-4 py-2 text-gray-300">Upcoming</button>
                 <button className="px-4 py-2 text-gray-300">Countries</button>
                 <button className="px-4 py-2 text-gray-300">Quick-e</button>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="text-white border-gray-600">
-                  <span>Filters</span>
-                  <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
-                <Button variant="outline" size="sm" className="text-white border-gray-600">
-                  <span>Today</span>
-                  <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
-                <Button variant="outline" size="sm" className="text-white border-gray-600">
-                  <span>Highlights</span>
-                  <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
-                <Button variant="outline" size="sm" className="text-white border-gray-600">
-                  <span>1x2</span>
-                  <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
               </div>
             </div>
 
@@ -334,6 +314,16 @@ export function PublicLandingPage() {
                   >
                     Load Betslip
                   </Button>
+                  
+                  <div className="mt-6 pt-6 border-t border-gray-700">
+                    <p className="text-sm mb-4">Ready to start betting?</p>
+                    <Button 
+                      className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold"
+                      onClick={() => setShowAuthForm(true)}
+                    >
+                      Sign Up Now
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
