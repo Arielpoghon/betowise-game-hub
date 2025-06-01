@@ -28,7 +28,7 @@ interface Bet {
   status: string;
   created_at: string;
   user_id: string;
-  matches: Match;
+  match?: Match;
 }
 
 export function BettingDashboard() {
@@ -81,30 +81,43 @@ export function BettingDashboard() {
   };
 
   const fetchUserBets = async () => {
-    const { data, error } = await supabase
+    // First fetch the bets
+    const { data: betsData, error: betsError } = await supabase
       .from('bets')
-      .select(`
-        id,
-        match_id,
-        amount,
-        team_choice,
-        status,
-        created_at,
-        user_id,
-        matches!inner (
-          id,
-          title,
-          start_time,
-          status,
-          created_at
-        )
-      `)
+      .select('id, match_id, amount, team_choice, status, created_at, user_id')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching bets:', error);
+    if (betsError) {
+      console.error('Error fetching bets:', betsError);
+      return;
+    }
+
+    // Then fetch the matches for those bets
+    if (betsData && betsData.length > 0) {
+      const matchIds = [...new Set(betsData.map(bet => bet.match_id))];
+      const { data: matchesData, error: matchesError } = await supabase
+        .from('matches')
+        .select('id, title, start_time, status, created_at')
+        .in('id', matchIds);
+
+      if (matchesError) {
+        console.error('Error fetching matches for bets:', matchesError);
+        setUserBets(betsData);
+        return;
+      }
+
+      // Join the data in frontend
+      const betsWithMatches = betsData.map(bet => {
+        const match = matchesData?.find(m => m.id === bet.match_id);
+        return {
+          ...bet,
+          match: match || undefined
+        };
+      });
+
+      setUserBets(betsWithMatches);
     } else {
-      setUserBets(data || []);
+      setUserBets([]);
     }
   };
 
@@ -117,8 +130,6 @@ export function BettingDashboard() {
 
   const handlePlaceBet = async (amount: number) => {
     if (!selectedMatch || !profile) return;
-
-    const potentialPayout = amount * selectedOdds;
 
     const { error } = await supabase
       .from('bets')
@@ -206,35 +217,12 @@ export function BettingDashboard() {
             <h2 className="text-xl font-semibold mb-6">Available Matches</h2>
             <div className="space-y-4">
               {matches.map((match) => (
-                <Card key={match.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <CardTitle className="text-lg">{match.title}</CardTitle>
-                    <p className="text-sm text-gray-500">
-                      Start time: {new Date(match.start_time).toLocaleString()}
-                    </p>
-                    <Badge className={match.status === 'open' ? 'bg-green-500' : 'bg-gray-500'}>
-                      {match.status}
-                    </Badge>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-4">
-                      <Button 
-                        onClick={() => handleBetClick(match, 'Team A', 2.0)}
-                        disabled={!profile || profile.balance <= 0 || match.status !== 'open'}
-                        className="flex-1"
-                      >
-                        Team A (2.0x)
-                      </Button>
-                      <Button 
-                        onClick={() => handleBetClick(match, 'Team B', 2.0)}
-                        disabled={!profile || profile.balance <= 0 || match.status !== 'open'}
-                        className="flex-1"
-                      >
-                        Team B (2.0x)
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <MatchCard
+                  key={match.id}
+                  match={match}
+                  onBet={handleBetClick}
+                  disabled={!profile || profile.balance <= 0}
+                />
               ))}
             </div>
           </div>
@@ -247,7 +235,9 @@ export function BettingDashboard() {
                 <Card key={bet.id}>
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-sm">{bet.matches.title}</CardTitle>
+                      <CardTitle className="text-sm">
+                        {bet.match?.title || 'Unknown Match'}
+                      </CardTitle>
                       <Badge className={getBetStatusColor(bet.status)}>
                         {bet.status}
                       </Badge>
