@@ -13,13 +13,19 @@ interface Match {
   created_at: string;
 }
 
+interface Market {
+  id: string;
+  name: string;
+  market_type: string;
+}
+
 interface BetDialogProps {
   open: boolean;
   onClose: () => void;
   onConfirm: (amount: number) => void;
   match: Match | null;
-  team: string;
-  odds: number;
+  market: Market | null;
+  odds: { id: string; outcome: string; odds: number } | null;
   userBalance: number;
 }
 
@@ -28,8 +34,8 @@ export function BetDialog({
   onClose, 
   onConfirm, 
   match, 
-  team, 
-  odds, 
+  market,
+  odds,
   userBalance 
 }: BetDialogProps) {
   const [amount, setAmount] = useState('');
@@ -43,7 +49,7 @@ export function BetDialog({
     }
   };
 
-  const potentialWin = parseFloat(amount) * odds || 0;
+  const potentialWin = odds ? parseFloat(amount) * odds.odds : 0;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -55,7 +61,10 @@ export function BetDialog({
           <div>
             <h3 className="font-medium">{match?.title}</h3>
             <p className="text-sm text-muted-foreground">
-              Betting on: {team} (Odds: {odds}x)
+              Market: {market?.name}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Selection: {odds?.outcome} (Odds: {odds?.odds})
             </p>
           </div>
           
@@ -81,6 +90,12 @@ export function BetDialog({
               <span>Potential Win:</span>
               <span className="font-medium text-green-600">
                 ${potentialWin.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm mt-1">
+              <span>Total Return:</span>
+              <span className="font-medium">
+                ${(potentialWin + parseFloat(amount || '0')).toFixed(2)}
               </span>
             </div>
           </div>
