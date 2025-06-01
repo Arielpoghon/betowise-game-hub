@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { AuthForm } from "@/components/AuthForm";
+import { PublicLandingPage } from "@/components/PublicLandingPage";
 import { BettingDashboard } from "@/components/BettingDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -25,18 +25,20 @@ function AppContent() {
     );
   }
 
-  if (!user) {
-    return <AuthForm />;
+  // Show authenticated dashboard if user is logged in
+  if (user) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<BettingDashboard />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+    );
   }
 
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<BettingDashboard />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
-  );
+  // Show public landing page for non-authenticated users
+  return <PublicLandingPage />;
 }
 
 const App = () => (

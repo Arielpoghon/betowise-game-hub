@@ -6,8 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { ArrowLeft } from 'lucide-react';
 
-export function AuthForm() {
+interface AuthFormProps {
+  onBack?: () => void;
+}
+
+export function AuthForm({ onBack }: AuthFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -51,28 +56,44 @@ export function AuthForm() {
       });
     } else {
       toast({
-        title: "Account created!",
-        description: "Please check your email to verify your account."
+        title: "Account created successfully!",
+        description: "You can now sign in with your credentials. Email verification is optional.",
+        duration: 5000
       });
+      // Clear form
+      setEmail('');
+      setPassword('');
+      setUsername('');
     }
     
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 p-4">
+      <Card className="w-full max-w-md bg-gray-800 border-gray-700">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">BetoWise</CardTitle>
-          <CardDescription className="text-center">
+          <div className="flex items-center gap-2 mb-2">
+            {onBack && (
+              <Button variant="ghost" size="sm" onClick={onBack}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <CardTitle className="text-2xl text-center text-yellow-400">BetoWise</CardTitle>
+          </div>
+          <CardDescription className="text-center text-gray-300">
             Join the ultimate betting platform
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 bg-gray-700">
+              <TabsTrigger value="signin" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-black">
+                Sign In
+              </TabsTrigger>
+              <TabsTrigger value="signup" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-black">
+                Sign Up
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin">
@@ -83,6 +104,7 @@ export function AuthForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="bg-gray-700 border-gray-600 text-white"
                 />
                 <Input
                   type="password"
@@ -90,8 +112,13 @@ export function AuthForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="bg-gray-700 border-gray-600 text-white"
                 />
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-green-500 hover:bg-green-600 text-black font-semibold" 
+                  disabled={loading}
+                >
                   {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
               </form>
@@ -105,6 +132,7 @@ export function AuthForm() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
+                  className="bg-gray-700 border-gray-600 text-white"
                 />
                 <Input
                   type="email"
@@ -112,6 +140,7 @@ export function AuthForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="bg-gray-700 border-gray-600 text-white"
                 />
                 <Input
                   type="password"
@@ -119,8 +148,13 @@ export function AuthForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="bg-gray-700 border-gray-600 text-white"
                 />
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-green-500 hover:bg-green-600 text-black font-semibold" 
+                  disabled={loading}
+                >
                   {loading ? 'Creating account...' : 'Sign Up'}
                 </Button>
               </form>
