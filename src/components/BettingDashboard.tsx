@@ -18,7 +18,7 @@ import {
   Trophy,
   Clock,
   TrendingUp,
-  User,
+  RefreshCw,
   Wallet
 } from 'lucide-react';
 
@@ -40,30 +40,6 @@ interface UserBet {
   created_at: string;
 }
 
-const sampleMatches: Match[] = [
-  {
-    id: '1',
-    title: 'Flamengo Rj vs Fortaleza Ec',
-    start_time: '2025-06-02T00:30:00',
-    status: 'open',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: '2',
-    title: 'Sc Corinthians vs Ec Vitoria',
-    start_time: '2025-06-02T00:30:00',
-    status: 'open',
-    created_at: new Date().toISOString()
-  },
-  {
-    id: '3',
-    title: 'Cunupia Fc vs Caledonia',
-    start_time: '2025-06-02T00:00:00',
-    status: 'open',
-    created_at: new Date().toISOString()
-  }
-];
-
 const sportsCategories = [
   { name: 'Soccer', icon: '⚽', active: true },
   { name: 'Boxing', icon: '🥊' },
@@ -80,7 +56,7 @@ const sportsCategories = [
 ];
 
 export function BettingDashboard() {
-  const [matches, setMatches] = useState<Match[]>(sampleMatches);
+  const [matches, setMatches] = useState<Match[]>([]);
   const [userBets, setUserBets] = useState<UserBet[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<string>('');
@@ -89,6 +65,7 @@ export function BettingDashboard() {
   const [showDepositDialog, setShowDepositDialog] = useState(false);
   const [selectedSport, setSelectedSport] = useState('Soccer');
   const [loading, setLoading] = useState(true);
+  const [updatingMatches, setUpdatingMatches] = useState(false);
 
   const { signOut } = useAuth();
   const { profile, updateBalance } = useUserProfile();
@@ -116,22 +93,46 @@ export function BettingDashboard() {
   }, []);
 
   const fetchMatches = async () => {
-    // For now using sample data, but you can uncomment below to fetch from database
-    /*
-    const { data: matchesData, error: matchesError } = await supabase
-      .from('matches')
-      .select('*')
-      .order('start_time', { ascending: true });
+    try {
+      const { data: matchesData, error: matchesError } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('status', 'open')
+        .order('start_time', { ascending: true })
+        .limit(10);
 
-    if (matchesError) {
-      console.error('Error fetching matches:', matchesError);
+      if (matchesError) {
+        console.error('Error fetching matches:', matchesError);
+        toast({
+          title: "Error fetching matches",
+          description: "Using sample data instead",
+          variant: "destructive"
+        });
+        // Fallback to sample data
+        setMatches([
+          {
+            id: '1',
+            title: 'Flamengo Rj vs Fortaleza Ec',
+            start_time: '2025-06-02T00:30:00',
+            status: 'open',
+            created_at: new Date().toISOString()
+          },
+          {
+            id: '2',
+            title: 'Sc Corinthians vs Ec Vitoria',
+            start_time: '2025-06-02T00:30:00',
+            status: 'open',
+            created_at: new Date().toISOString()
+          }
+        ]);
+      } else {
+        setMatches(matchesData || []);
+      }
+    } catch (error) {
+      console.error('Unexpected error:', error);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setMatches(matchesData || []);
-    */
-    setLoading(false);
   };
 
   const fetchUserBets = async () => {
@@ -150,6 +151,36 @@ export function BettingDashboard() {
     }
   };
 
+  const updateMatches = async () => {
+    setUpdatingMatches(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-matches');
+      
+      if (error) {
+        toast({
+          title: "Error updating matches",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Matches updated!",
+          description: `Updated ${data?.updated || 0} matches`
+        });
+        fetchMatches();
+      }
+    } catch (error) {
+      console.error('Error calling edge function:', error);
+      toast({
+        title: "Error updating matches",
+        description: "Failed to fetch latest matches",
+        variant: "destructive"
+      });
+    } finally {
+      setUpdatingMatches(false);
+    }
+  };
+
   const handleBetClick = (match: Match, team: string, odds: number) => {
     setSelectedMatch(match);
     setSelectedTeam(team);
@@ -161,7 +192,6 @@ export function BettingDashboard() {
     if (!selectedMatch || !profile) return;
 
     try {
-      // Insert bet record
       const { data, error } = await supabase
         .from('bets')
         .insert({
@@ -179,7 +209,6 @@ export function BettingDashboard() {
           variant: "destructive"
         });
       } else {
-        // Update user balance
         await updateBalance(profile.balance - amount);
         
         toast({
@@ -187,7 +216,6 @@ export function BettingDashboard() {
           description: `You bet $${amount} on ${selectedTeam} for ${selectedMatch.title}`
         });
         
-        // Refresh data
         fetchUserBets();
       }
     } catch (error) {
@@ -325,6 +353,18 @@ export function BettingDashboard() {
               </div>
             </div>
 
+            {/* Update Matches Button */}
+            <div className="mb-6">
+              <Button 
+                onClick={updateMatches} 
+                disabled={updatingMatches}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${updatingMatches ? 'animate-spin' : ''}`} />
+                {updatingMatches ? 'Updating...' : 'Update Matches'}
+              </Button>
+            </div>
+
             {/* Matches */}
             <div className="space-y-4">
               {/* Match Header */}
@@ -348,8 +388,8 @@ export function BettingDashboard() {
                           </span>
                         </div>
                         <div className="space-y-1">
-                          <div className="font-medium">{match.title.split(' vs ')[0]}</div>
-                          <div className="font-medium">{match.title.split(' vs ')[1]}</div>
+                          <div className="font-medium">{match.title.split(' vs ')[0] || 'Team A'}</div>
+                          <div className="font-medium">{match.title.split(' vs ')[1] || 'Team B'}</div>
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                           <Clock className="h-3 w-3 text-gray-400" />
@@ -364,7 +404,7 @@ export function BettingDashboard() {
                         <Button 
                           variant="outline" 
                           className="w-full bg-gray-700 border-gray-600 hover:bg-gray-600"
-                          onClick={() => handleBetClick(match, match.title.split(' vs ')[0], 1.37)}
+                          onClick={() => handleBetClick(match, match.title.split(' vs ')[0] || 'Team A', 1.37)}
                           disabled={!profile || profile.balance <= 0}
                         >
                           1.37
@@ -384,7 +424,7 @@ export function BettingDashboard() {
                         <Button 
                           variant="outline" 
                           className="w-full bg-gray-700 border-gray-600 hover:bg-gray-600"
-                          onClick={() => handleBetClick(match, match.title.split(' vs ')[1], 8.20)}
+                          onClick={() => handleBetClick(match, match.title.split(' vs ')[1] || 'Team B', 8.20)}
                           disabled={!profile || profile.balance <= 0}
                         >
                           8.20
@@ -402,6 +442,18 @@ export function BettingDashboard() {
                   </CardContent>
                 </Card>
               ))}
+
+              {matches.length === 0 && (
+                <Card className="bg-gray-800 border-gray-700">
+                  <CardContent className="p-8 text-center">
+                    <p className="text-gray-400 mb-4">No matches available</p>
+                    <Button onClick={updateMatches} disabled={updatingMatches}>
+                      <RefreshCw className={`h-4 w-4 mr-2 ${updatingMatches ? 'animate-spin' : ''}`} />
+                      Load Matches
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
 
