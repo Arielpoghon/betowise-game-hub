@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useSportsData } from '@/hooks/useSportsData';
 import { BetDialog } from './BetDialog';
 import { DepositDialog } from './DepositDialog';
 import { Button } from '@/components/ui/button';
@@ -24,14 +25,6 @@ import {
   Star
 } from 'lucide-react';
 
-interface Match {
-  id: string;
-  title: string;
-  start_time: string;
-  status: string;
-  created_at: string;
-}
-
 interface UserBet {
   id: number;
   user_id: string;
@@ -43,102 +36,54 @@ interface UserBet {
 }
 
 const sportsCategories = [
-  { name: 'Soccer', icon: '⚽', active: true },
+  { name: 'Soccer', icon: '⚽' },
   { name: 'Boxing', icon: '🥊' },
   { name: 'Rugby', icon: '🏉' },
-  { name: 'Aussie Rules', icon: '🏈' },
-  { name: 'Baseball', icon: '⚾' },
-  { name: 'Table Tennis', icon: '🏓' },
-  { name: 'Cricket', icon: '🏏' },
   { name: 'Tennis', icon: '🎾' },
   { name: 'Basketball', icon: '🏀' },
-  { name: 'Futsal', icon: '⚽' },
-  { name: 'Volleyball', icon: '🏐' },
+  { name: 'Baseball', icon: '⚾' },
+  { name: 'Cricket', icon: '🏏' },
   { name: 'Hockey', icon: '🏒' }
 ];
 
 export function BettingDashboard() {
-  const [matches, setMatches] = useState<Match[]>([]);
   const [userBets, setUserBets] = useState<UserBet[]>([]);
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<any>(null);
   const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [selectedOdds, setSelectedOdds] = useState<number>(0);
   const [showBetDialog, setShowBetDialog] = useState(false);
   const [showDepositDialog, setShowDepositDialog] = useState(false);
-  const [selectedSport, setSelectedSport] = useState('Soccer');
-  const [loading, setLoading] = useState(true);
-  const [updatingMatches, setUpdatingMatches] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [notifications, setNotifications] = useState(3);
+  const [activeTab, setActiveTab] = useState('Live');
 
   const { signOut } = useAuth();
   const { profile, updateBalance } = useUserProfile();
   const { toast } = useToast();
+  
+  const { 
+    liveMatches, 
+    loading, 
+    selectedSport, 
+    liveCount, 
+    fetchLiveMatches, 
+    changeSport 
+  } = useSportsData();
 
   useEffect(() => {
-    fetchMatches();
     fetchUserBets();
     
-    // Set up real-time subscriptions
-    const matchesSubscription = supabase
-      .channel('matches-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, fetchMatches)
-      .subscribe();
-
+    // Set up real-time subscriptions for bets
     const betsSubscription = supabase
       .channel('bets-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bets' }, fetchUserBets)
       .subscribe();
 
     return () => {
-      supabase.removeChannel(matchesSubscription);
       supabase.removeChannel(betsSubscription);
     };
   }, []);
-
-  const fetchMatches = async () => {
-    try {
-      const { data: matchesData, error: matchesError } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('status', 'open')
-        .order('start_time', { ascending: true })
-        .limit(10);
-
-      if (matchesError) {
-        console.error('Error fetching matches:', matchesError);
-        toast({
-          title: "Error fetching matches",
-          description: "Using sample data instead",
-          variant: "destructive"
-        });
-        // Fallback to sample data
-        setMatches([
-          {
-            id: '1',
-            title: 'Flamengo Rj vs Fortaleza Ec',
-            start_time: '2025-06-02T00:30:00',
-            status: 'open',
-            created_at: new Date().toISOString()
-          },
-          {
-            id: '2',
-            title: 'Sc Corinthians vs Ec Vitoria',
-            start_time: '2025-06-02T00:30:00',
-            status: 'open',
-            created_at: new Date().toISOString()
-          }
-        ]);
-      } else {
-        setMatches(matchesData || []);
-      }
-    } catch (error) {
-      console.error('Unexpected error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchUserBets = async () => {
     if (!profile) return;
@@ -156,37 +101,7 @@ export function BettingDashboard() {
     }
   };
 
-  const updateMatches = async () => {
-    setUpdatingMatches(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('fetch-matches');
-      
-      if (error) {
-        toast({
-          title: "Error updating matches",
-          description: error.message,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Matches updated!",
-          description: `Updated ${data?.updated || 0} matches`
-        });
-        fetchMatches();
-      }
-    } catch (error) {
-      console.error('Error calling edge function:', error);
-      toast({
-        title: "Error updating matches",
-        description: "Failed to fetch latest matches",
-        variant: "destructive"
-      });
-    } finally {
-      setUpdatingMatches(false);
-    }
-  };
-
-  const handleBetClick = (match: Match, team: string, odds: number) => {
+  const handleBetClick = (match: any, team: string, odds: number) => {
     if (!profile) {
       toast({
         title: "Please log in",
@@ -242,7 +157,7 @@ export function BettingDashboard() {
         
         toast({
           title: "Bet placed successfully!",
-          description: `You bet $${amount} on ${selectedTeam} for ${selectedMatch.title}`
+          description: `You bet $${amount} on ${selectedTeam}`
         });
         
         fetchUserBets();
@@ -270,10 +185,10 @@ export function BettingDashboard() {
   };
 
   const handleSportSelect = (sport: string) => {
-    setSelectedSport(sport);
+    changeSport(sport);
     toast({
-      title: "Sport selected",
-      description: `Showing ${sport} matches`
+      title: "Sport changed",
+      description: `Now showing ${sport} matches`
     });
   };
 
@@ -295,6 +210,17 @@ export function BettingDashboard() {
     setNotifications(0);
   };
 
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'Live') {
+      fetchLiveMatches();
+    }
+    toast({
+      title: "Tab changed",
+      description: `Viewing ${tab} matches`
+    });
+  };
+
   const getBetStatusColor = (status: string) => {
     switch (status) {
       case 'won': return 'bg-green-500';
@@ -304,16 +230,16 @@ export function BettingDashboard() {
     }
   };
 
-  const filteredMatches = matches.filter(match => 
-    match.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredMatches = liveMatches.filter(match => 
+    `${match.homeTeam} ${match.awayTeam}`.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (loading) {
+  if (loading && liveMatches.length === 0) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-400 mx-auto"></div>
-          <p className="mt-4 text-gray-300">Loading matches...</p>
+          <p className="mt-4 text-gray-300">Loading live matches...</p>
         </div>
       </div>
     );
@@ -327,7 +253,7 @@ export function BettingDashboard() {
           <div className="flex items-center justify-between h-16">
             {/* Logo and Menu */}
             <div className="flex items-center gap-6">
-              <Menu className="h-6 w-6 cursor-pointer hover:text-yellow-400 transition-colors" />
+              <Menu className="h-6 w-6 cursor-pointer hover:text-yellow-400 transition-colors animate-pulse" />
               <div className="text-2xl font-bold text-yellow-400 hover:scale-105 transition-transform cursor-pointer">
                 BetoWise
               </div>
@@ -336,31 +262,34 @@ export function BettingDashboard() {
             {/* Main Navigation */}
             <nav className="hidden md:flex items-center gap-6 text-sm">
               <span className="text-yellow-400 cursor-pointer hover:underline transition-all">Home</span>
-              <div className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors">
+              <div 
+                className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
+                onClick={() => handleTabChange('Live')}
+              >
                 <span>Live</span>
-                <Badge variant="destructive" className="text-xs animate-pulse">113</Badge>
+                <Badge variant="destructive" className="text-xs animate-pulse">{liveCount}</Badge>
               </div>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors">Jackpots</span>
-              <div className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors">
+              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Jackpots</span>
+              <div className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">
                 <span>Shikisha Bet</span>
-                <Badge variant="destructive" className="text-xs">6</Badge>
+                <Badge variant="destructive" className="text-xs">{userBets.length}</Badge>
               </div>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors">Aviator</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors">Ligi Bigi</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors">Casino</span>
-              <div className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors">
+              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Aviator</span>
+              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Ligi Bigi</span>
+              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Casino</span>
+              <div className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">
                 <span>Promotions</span>
                 <Badge variant="destructive" className="text-xs animate-bounce">14</Badge>
               </div>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors">Virtuals</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors">Betika Fasta</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors">Crash Games</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors">Live Score</span>
+              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Virtuals</span>
+              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Betika Fasta</span>
+              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Crash Games</span>
+              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Live Score</span>
             </nav>
 
             {/* User Actions */}
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+              <div className="flex items-center gap-2 bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors hover:scale-105">
                 <Wallet className="h-4 w-4 text-green-400" />
                 <span className="font-semibold">${profile?.balance.toFixed(2) || '0.00'}</span>
               </div>
@@ -376,7 +305,7 @@ export function BettingDashboard() {
               
               <div className="relative">
                 <Bell 
-                  className="h-5 w-5 cursor-pointer hover:text-yellow-400 transition-colors" 
+                  className="h-5 w-5 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-110" 
                   onClick={handleNotifications}
                 />
                 {notifications > 0 && (
@@ -387,11 +316,11 @@ export function BettingDashboard() {
               </div>
               
               <Search 
-                className="h-5 w-5 cursor-pointer hover:text-yellow-400 transition-colors" 
+                className="h-5 w-5 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-110" 
                 onClick={handleSearch}
               />
               
-              <Button variant="ghost" onClick={signOut} size="sm" className="hover:bg-red-600 transition-colors">
+              <Button variant="ghost" onClick={signOut} size="sm" className="hover:bg-red-600 transition-colors hover:scale-105">
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
@@ -402,14 +331,15 @@ export function BettingDashboard() {
 
       {/* Search Bar */}
       {showSearch && (
-        <div className="bg-gray-800 border-b border-gray-700 p-4 animate-fade-in">
+        <div className="bg-gray-800 border-b border-gray-700 p-4 animate-slide-down">
           <div className="max-w-7xl mx-auto">
             <input
               type="text"
-              placeholder="Search matches..."
+              placeholder="Search live matches..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all"
+              autoFocus
             />
           </div>
         </div>
@@ -419,21 +349,32 @@ export function BettingDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left Sidebar - Sports */}
           <div className="lg:col-span-1">
-            <div className="bg-gray-800 rounded-lg p-4">
-              <h3 className="font-semibold mb-4">Sports</h3>
+            <div className="bg-gray-800 rounded-lg p-4 animate-fade-in">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">Sports</h3>
+                <RefreshCw 
+                  className={`h-4 w-4 cursor-pointer hover:text-yellow-400 transition-colors ${loading ? 'animate-spin' : 'hover:scale-110'}`}
+                  onClick={() => fetchLiveMatches()}
+                />
+              </div>
               <div className="space-y-2">
                 {sportsCategories.map((sport) => (
                   <div
                     key={sport.name}
-                    className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-all hover:scale-105 ${
-                      sport.active || selectedSport === sport.name
-                        ? 'bg-gray-700 text-yellow-400'
-                        : 'hover:bg-gray-700'
+                    className={`flex items-center gap-3 p-3 rounded cursor-pointer transition-all hover:scale-105 transform ${
+                      selectedSport === sport.name
+                        ? 'bg-yellow-400 text-black shadow-lg'
+                        : 'hover:bg-gray-700 hover:shadow-md'
                     }`}
                     onClick={() => handleSportSelect(sport.name)}
                   >
-                    <span className="text-lg">{sport.icon}</span>
-                    <span className="text-sm">{sport.name}</span>
+                    <span className="text-lg animate-bounce">{sport.icon}</span>
+                    <span className="text-sm font-medium">{sport.name}</span>
+                    {selectedSport === sport.name && (
+                      <Badge className="ml-auto bg-black text-yellow-400 text-xs">
+                        {filteredMatches.length}
+                      </Badge>
+                    )}
                   </div>
                 ))}
               </div>
@@ -443,10 +384,10 @@ export function BettingDashboard() {
           {/* Main Content */}
           <div className="lg:col-span-2">
             {/* Market Banner */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 mb-6 relative overflow-hidden hover:shadow-lg transition-shadow">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 mb-6 relative overflow-hidden hover:shadow-xl transition-all cursor-pointer hover:scale-105 animate-fade-in">
               <div className="relative z-10">
-                <div className="text-2xl font-bold mb-2">MARKET Live</div>
-                <div className="bg-yellow-400 text-black px-4 py-2 rounded font-bold text-lg inline-block hover:bg-yellow-300 transition-colors cursor-pointer">
+                <div className="text-2xl font-bold mb-2 animate-pulse">MARKET Live</div>
+                <div className="bg-yellow-400 text-black px-4 py-2 rounded font-bold text-lg inline-block hover:bg-yellow-300 transition-colors">
                   THE STOCK MARKET
                 </div>
               </div>
@@ -456,138 +397,183 @@ export function BettingDashboard() {
             </div>
 
             {/* Update Matches Button */}
-            <div className="mb-6 flex gap-4">
+            <div className="mb-6 flex gap-4 animate-fade-in">
               <Button 
-                onClick={updateMatches} 
-                disabled={updatingMatches}
+                onClick={() => fetchLiveMatches()} 
+                disabled={loading}
                 className="bg-blue-600 hover:bg-blue-700 transition-all hover:scale-105"
               >
-                <RefreshCw className={`h-4 w-4 mr-2 ${updatingMatches ? 'animate-spin' : ''}`} />
-                {updatingMatches ? 'Updating...' : 'Update Matches'}
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Updating...' : 'Update Matches'}
               </Button>
               
-              <Button variant="outline" className="hover:bg-gray-700 transition-colors">
+              <div className="flex bg-gray-800 rounded-lg p-1">
+                {['Live', 'Upcoming', 'My Bets'].map((tab) => (
+                  <button 
+                    key={tab}
+                    onClick={() => handleTabChange(tab)}
+                    className={`px-4 py-2 rounded font-semibold transition-all hover:scale-105 ${
+                      activeTab === tab 
+                        ? 'bg-yellow-400 text-black shadow-lg' 
+                        : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                    }`}
+                  >
+                    {tab}
+                    {tab === 'Live' && (
+                      <Badge className="ml-2 bg-red-500 text-white text-xs animate-pulse">
+                        {liveCount}
+                      </Badge>
+                    )}
+                  </button>
+                ))}
+              </div>
+              
+              <Button variant="outline" className="hover:bg-gray-700 transition-colors hover:scale-105">
                 <Filter className="h-4 w-4 mr-2" />
                 Filter
               </Button>
             </div>
 
-            {/* Matches */}
-            <div className="space-y-4">
-              {/* Match Header */}
-              <div className="grid grid-cols-12 gap-4 text-gray-400 text-sm px-4">
-                <div className="col-span-6">Teams</div>
-                <div className="col-span-2 text-center">1</div>
-                <div className="col-span-2 text-center">X</div>
-                <div className="col-span-2 text-center">2</div>
+            {/* Loading State */}
+            {loading && (
+              <div className="text-center py-8 animate-pulse">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+                <p className="text-gray-400">Updating {selectedSport} matches...</p>
               </div>
+            )}
 
-              {filteredMatches.map((match) => (
-                <Card key={match.id} className="bg-gray-800 border-gray-700 hover:bg-gray-750 transition-all hover:shadow-lg animate-fade-in">
-                  <CardContent className="p-4">
-                    <div className="grid grid-cols-12 gap-4 items-center">
-                      {/* Teams and League Info */}
-                      <div className="col-span-6">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs">🇧🇷</span>
-                          <span className="text-sm text-gray-400">
-                            Brazil • Brasileiro Serie A
-                          </span>
-                          <Star className="h-3 w-3 text-yellow-400" />
+            {/* Matches */}
+            {!loading && (
+              <div className="space-y-4">
+                {/* Match Header */}
+                <div className="grid grid-cols-12 gap-4 text-gray-400 text-sm px-4 animate-fade-in">
+                  <div className="col-span-6">
+                    Teams • {selectedSport} • Live: {filteredMatches.filter(m => m.status === 'live').length}
+                  </div>
+                  <div className="col-span-2 text-center">1</div>
+                  <div className="col-span-2 text-center">X</div>
+                  <div className="col-span-2 text-center">2</div>
+                </div>
+
+                {filteredMatches.map((match, index) => (
+                  <Card 
+                    key={match.id} 
+                    className="bg-gray-800 border-gray-700 hover:bg-gray-750 transition-all hover:shadow-xl hover:scale-105 animate-fade-in"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <CardContent className="p-4">
+                      <div className="grid grid-cols-12 gap-4 items-center">
+                        {/* Teams and League Info */}
+                        <div className="col-span-6">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs">🌍</span>
+                            <span className="text-sm text-gray-400">
+                              {match.country} • {match.league}
+                            </span>
+                            <Star className="h-3 w-3 text-yellow-400 animate-pulse" />
+                            {match.status === 'live' && (
+                              <Badge className="bg-red-500 text-white text-xs animate-pulse">
+                                LIVE
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <div className="font-medium hover:text-yellow-400 transition-colors">
+                              {match.homeTeam}
+                            </div>
+                            <div className="font-medium hover:text-yellow-400 transition-colors">
+                              {match.awayTeam}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Clock className="h-3 w-3 text-gray-400" />
+                            <span className="text-xs text-gray-400">{match.time}</span>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <div className="font-medium">{match.title.split(' vs ')[0] || 'Team A'}</div>
-                          <div className="font-medium">{match.title.split(' vs ')[1] || 'Team B'}</div>
+
+                        {/* Odds */}
+                        <div className="col-span-2">
+                          <Button 
+                            variant="outline" 
+                            className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-110 shadow-lg"
+                            onClick={() => handleBetClick(match, match.homeTeam, match.homeOdds)}
+                            disabled={!profile || profile.balance <= 0}
+                          >
+                            {match.homeOdds}
+                          </Button>
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Clock className="h-3 w-3 text-gray-400" />
-                          <span className="text-xs text-gray-400">
-                            {new Date(match.start_time).toLocaleDateString()} {new Date(match.start_time).toLocaleTimeString()}
-                          </span>
+                        <div className="col-span-2">
+                          <Button 
+                            variant="outline" 
+                            className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-110 shadow-lg"
+                            onClick={() => handleBetClick(match, 'Draw', match.drawOdds)}
+                            disabled={!profile || profile.balance <= 0}
+                          >
+                            {match.drawOdds}
+                          </Button>
+                        </div>
+                        <div className="col-span-2">
+                          <Button 
+                            variant="outline" 
+                            className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-110 shadow-lg"
+                            onClick={() => handleBetClick(match, match.awayTeam, match.awayOdds)}
+                            disabled={!profile || profile.balance <= 0}
+                          >
+                            {match.awayOdds}
+                          </Button>
                         </div>
                       </div>
+                      
+                      {/* Additional Markets */}
+                      <div className="mt-3 text-right">
+                        <span className="text-green-400 text-sm cursor-pointer hover:underline flex items-center justify-end gap-1 hover:text-green-300 transition-all hover:scale-105">
+                          <Plus className="h-3 w-3" />
+                          {Math.floor(Math.random() * 50) + 30} Markets
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
 
-                      {/* Odds */}
-                      <div className="col-span-2">
+                {filteredMatches.length === 0 && (
+                  <Card className="bg-gray-800 border-gray-700 animate-fade-in">
+                    <CardContent className="p-8 text-center">
+                      <p className="text-gray-400 mb-4">
+                        {searchQuery ? `No matches found for "${searchQuery}"` : `No ${selectedSport} matches available`}
+                      </p>
+                      <div className="flex gap-4 justify-center">
+                        {searchQuery && (
+                          <Button onClick={() => setSearchQuery('')} variant="outline">
+                            Clear Search
+                          </Button>
+                        )}
                         <Button 
-                          variant="outline" 
-                          className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-105"
-                          onClick={() => handleBetClick(match, match.title.split(' vs ')[0] || 'Team A', 1.37)}
-                          disabled={!profile || profile.balance <= 0}
+                          onClick={() => fetchLiveMatches()} 
+                          className="hover:scale-105 transition-transform"
                         >
-                          1.37
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Refresh Matches
                         </Button>
                       </div>
-                      <div className="col-span-2">
-                        <Button 
-                          variant="outline" 
-                          className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-105"
-                          onClick={() => handleBetClick(match, 'Draw', 4.70)}
-                          disabled={!profile || profile.balance <= 0}
-                        >
-                          4.70
-                        </Button>
-                      </div>
-                      <div className="col-span-2">
-                        <Button 
-                          variant="outline" 
-                          className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-105"
-                          onClick={() => handleBetClick(match, match.title.split(' vs ')[1] || 'Team B', 8.20)}
-                          disabled={!profile || profile.balance <= 0}
-                        >
-                          8.20
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    {/* Additional Markets */}
-                    <div className="mt-3 text-right">
-                      <span className="text-green-400 text-sm cursor-pointer hover:underline flex items-center justify-end gap-1 hover:text-green-300 transition-colors">
-                        <Plus className="h-3 w-3" />
-                        84 Markets
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-
-              {filteredMatches.length === 0 && matches.length > 0 && (
-                <Card className="bg-gray-800 border-gray-700">
-                  <CardContent className="p-8 text-center">
-                    <p className="text-gray-400 mb-4">No matches found for "{searchQuery}"</p>
-                    <Button onClick={() => setSearchQuery('')}>
-                      Clear Search
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-
-              {matches.length === 0 && (
-                <Card className="bg-gray-800 border-gray-700">
-                  <CardContent className="p-8 text-center">
-                    <p className="text-gray-400 mb-4">No matches available</p>
-                    <Button onClick={updateMatches} disabled={updatingMatches} className="hover:scale-105 transition-transform">
-                      <RefreshCw className={`h-4 w-4 mr-2 ${updatingMatches ? 'animate-spin' : ''}`} />
-                      Load Matches
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right Sidebar - User Bets & Betslip */}
           <div className="lg:col-span-1">
-            <Card className="bg-gray-800 border-gray-700 mb-6">
+            <Card className="bg-gray-800 border-gray-700 mb-6 animate-fade-in">
               <CardContent className="p-4">
                 <div className="text-center mb-4">
-                  <Trophy className="h-8 w-8 mx-auto mb-2 text-yellow-400 animate-pulse" />
+                  <Trophy className="h-8 w-8 mx-auto mb-2 text-yellow-400 animate-bounce" />
                   <h3 className="font-semibold mb-2">Normal ({userBets.length})</h3>
                   <div className="flex gap-2 text-sm">
-                    <button className="px-3 py-1 bg-green-500 text-black rounded hover:bg-green-600 transition-colors">
+                    <button className="px-3 py-1 bg-green-500 text-black rounded hover:bg-green-600 transition-all hover:scale-105">
                       Shikisha Bet ({userBets.length})
                     </button>
-                    <button className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 transition-colors">
+                    <button className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 transition-all hover:scale-105">
                       Virtuals (0)
                     </button>
                   </div>
@@ -596,7 +582,7 @@ export function BettingDashboard() {
                 <div className="space-y-3">
                   <h4 className="font-semibold">Your Recent Bets</h4>
                   {userBets.slice(0, 5).map((bet) => (
-                    <Card key={bet.id} className="bg-gray-700 hover:bg-gray-600 transition-colors">
+                    <Card key={bet.id} className="bg-gray-700 hover:bg-gray-600 transition-all hover:scale-105">
                       <CardContent className="p-3">
                         <div className="flex justify-between items-start mb-2">
                           <Badge className={getBetStatusColor(bet.status)}>
@@ -619,7 +605,7 @@ export function BettingDashboard() {
                       <Button 
                         onClick={() => setShowDepositDialog(true)}
                         size="sm"
-                        className="mt-2 bg-yellow-400 text-black hover:bg-yellow-500 transition-colors"
+                        className="mt-2 bg-yellow-400 text-black hover:bg-yellow-500 transition-all hover:scale-105"
                       >
                         Add Funds
                       </Button>
