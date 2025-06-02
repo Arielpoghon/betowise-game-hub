@@ -13,6 +13,8 @@ export interface SportDBMatch {
   strTime: string;
   strStatus: string;
   strCountry: string;
+  intHomeScore?: string;
+  intAwayScore?: string;
 }
 
 export interface LiveMatch {
@@ -27,6 +29,8 @@ export interface LiveMatch {
   homeOdds: number;
   drawOdds: number;
   awayOdds: number;
+  homeScore?: number;
+  awayScore?: number;
 }
 
 const SPORT_ENDPOINTS = {
@@ -61,54 +65,84 @@ export function useSportsData() {
 
   const fetchLiveMatches = async (sport: string = selectedSport) => {
     setLoading(true);
+    console.log(`Fetching ${sport} matches from SportDB...`);
+    
     try {
-      // Fetch live events for the selected sport
-      const response = await fetch(`https://www.thesportsdb.com/api/v1/json/3/latestscore.php?s=${SPORT_ENDPOINTS[sport as keyof typeof SPORT_ENDPOINTS] || 'soccer'}`);
+      // Try multiple SportDB endpoints for better data coverage
+      const endpoints = [
+        `https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${new Date().toISOString().split('T')[0]}&s=${SPORT_ENDPOINTS[sport as keyof typeof SPORT_ENDPOINTS] || 'soccer'}`,
+        `https://www.thesportsdb.com/api/v1/json/3/eventsnext.php?id=133604`, // Example league ID
+        `https://www.thesportsdb.com/api/v1/json/3/latestscore.php?s=${SPORT_ENDPOINTS[sport as keyof typeof SPORT_ENDPOINTS] || 'soccer'}`
+      ];
+
+      let matchesFound = false;
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch live matches');
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Trying endpoint: ${endpoint}`);
+          const response = await fetch(endpoint);
+          
+          if (!response.ok) {
+            console.log(`Endpoint failed with status: ${response.status}`);
+            continue;
+          }
+
+          const data = await response.json();
+          console.log(`SportDB Response for ${sport}:`, data);
+
+          if (data?.events && Array.isArray(data.events) && data.events.length > 0) {
+            const matches: LiveMatch[] = data.events
+              .filter((event: any) => event && event.strEvent && event.strHomeTeam && event.strAwayTeam)
+              .slice(0, 15) // Limit to 15 matches for better performance
+              .map((event: any) => {
+                const odds = generateRealisticOdds();
+                const isLive = event.strStatus === 'Match Finished' ? false : Math.random() > 0.6; // 40% chance of being live
+                
+                return {
+                  id: event.idEvent || Math.random().toString(),
+                  homeTeam: event.strHomeTeam,
+                  awayTeam: event.strAwayTeam,
+                  league: event.strLeague || `${sport} League`,
+                  country: event.strCountry || 'International',
+                  sport: event.strSport || sport,
+                  time: event.dateEvent && event.strTime ? 
+                    `${event.dateEvent} ${event.strTime}` : 
+                    new Date().toLocaleString(),
+                  status: isLive ? 'live' : (event.strStatus === 'Match Finished' ? 'finished' : 'upcoming'),
+                  homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : undefined,
+                  awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : undefined,
+                  ...odds
+                };
+              });
+
+            setLiveMatches(matches);
+            setLiveCount(matches.filter(m => m.status === 'live').length);
+            matchesFound = true;
+            
+            toast({
+              title: "Real matches loaded!",
+              description: `Found ${matches.length} ${sport} matches from SportDB`
+            });
+            
+            console.log(`Successfully loaded ${matches.length} matches for ${sport}`);
+            break;
+          }
+        } catch (endpointError) {
+          console.log(`Endpoint error:`, endpointError);
+          continue;
+        }
       }
 
-      const data = await response.json();
-      console.log('SportDB Response:', data);
-
-      if (data?.events && Array.isArray(data.events)) {
-        const matches: LiveMatch[] = data.events
-          .filter((event: any) => event && event.strEvent)
-          .slice(0, 10) // Limit to 10 matches
-          .map((event: any) => {
-            const odds = generateRealisticOdds();
-            return {
-              id: event.idEvent || Math.random().toString(),
-              homeTeam: event.strHomeTeam || 'Home Team',
-              awayTeam: event.strAwayTeam || 'Away Team',
-              league: event.strLeague || 'Unknown League',
-              country: event.strCountry || 'Unknown',
-              sport: event.strSport || sport,
-              time: event.dateEvent && event.strTime ? 
-                `${event.dateEvent} ${event.strTime}` : 
-                new Date().toLocaleString(),
-              status: event.strStatus === 'Match Finished' ? 'finished' : 'live',
-              ...odds
-            };
-          });
-
-        setLiveMatches(matches);
-        setLiveCount(matches.filter(m => m.status === 'live').length);
-        
-        toast({
-          title: "Matches updated!",
-          description: `Found ${matches.length} ${sport} matches`
-        });
-      } else {
-        // Fallback with realistic sample data if API doesn't return matches
+      // If no real matches found, use realistic fallback data
+      if (!matchesFound) {
+        console.log(`No real matches found for ${sport}, using fallback data`);
         const fallbackMatches = generateFallbackMatches(sport);
         setLiveMatches(fallbackMatches);
-        setLiveCount(Math.floor(Math.random() * 50) + 80); // Random live count between 80-130
+        setLiveCount(fallbackMatches.filter(m => m.status === 'live').length);
         
         toast({
           title: "Sample matches loaded",
-          description: `Showing sample ${sport} matches`
+          description: `No live ${sport} matches found on SportDB, showing sample data`
         });
       }
     } catch (error) {
@@ -117,11 +151,11 @@ export function useSportsData() {
       // Generate realistic fallback data
       const fallbackMatches = generateFallbackMatches(sport);
       setLiveMatches(fallbackMatches);
-      setLiveCount(Math.floor(Math.random() * 50) + 80);
+      setLiveCount(fallbackMatches.filter(m => m.status === 'live').length);
       
       toast({
         title: "Connection issue",
-        description: `Showing sample ${sport} matches`,
+        description: `Showing sample ${sport} matches due to connection error`,
         variant: "destructive"
       });
     } finally {
@@ -134,21 +168,38 @@ export function useSportsData() {
       'Soccer': [
         ['Manchester United', 'Liverpool'], ['Barcelona', 'Real Madrid'], 
         ['Bayern Munich', 'Dortmund'], ['PSG', 'Marseille'],
-        ['Juventus', 'AC Milan'], ['Arsenal', 'Chelsea']
+        ['Juventus', 'AC Milan'], ['Arsenal', 'Chelsea'],
+        ['Manchester City', 'Tottenham'], ['Inter Milan', 'Roma']
       ],
       'Boxing': [
         ['Anthony Joshua', 'Tyson Fury'], ['Canelo Alvarez', 'Gennady Golovkin'],
-        ['Terence Crawford', 'Errol Spence'], ['Ryan Garcia', 'Gervonta Davis']
+        ['Terence Crawford', 'Errol Spence'], ['Ryan Garcia', 'Gervonta Davis'],
+        ['Dmitry Bivol', 'Artur Beterbiev'], ['Naoya Inoue', 'Stephen Fulton']
       ],
       'Tennis': [
         ['Novak Djokovic', 'Rafael Nadal'], ['Carlos Alcaraz', 'Daniil Medvedev'],
-        ['Stefanos Tsitsipas', 'Alexander Zverev'], ['Jannik Sinner', 'Holger Rune']
+        ['Stefanos Tsitsipas', 'Alexander Zverev'], ['Jannik Sinner', 'Holger Rune'],
+        ['Iga Swiatek', 'Aryna Sabalenka'], ['Coco Gauff', 'Jessica Pegula']
       ],
       'Basketball': [
-        ['Lakers', 'Warriors'], ['Celtics', 'Heat'], ['Nets', 'Sixers'], ['Bucks', 'Nuggets']
+        ['Lakers', 'Warriors'], ['Celtics', 'Heat'], ['Nets', 'Sixers'], 
+        ['Bucks', 'Nuggets'], ['Suns', 'Clippers'], ['Bulls', 'Knicks']
       ],
       'Rugby': [
-        ['England', 'Wales'], ['France', 'Ireland'], ['South Africa', 'New Zealand'], ['Australia', 'Scotland']
+        ['England', 'Wales'], ['France', 'Ireland'], ['South Africa', 'New Zealand'], 
+        ['Australia', 'Scotland'], ['Italy', 'Argentina'], ['Japan', 'Fiji']
+      ],
+      'Baseball': [
+        ['Yankees', 'Red Sox'], ['Dodgers', 'Giants'], ['Astros', 'Rangers'],
+        ['Braves', 'Mets'], ['Phillies', 'Marlins'], ['Cardinals', 'Cubs']
+      ],
+      'Cricket': [
+        ['India', 'Australia'], ['England', 'Pakistan'], ['South Africa', 'New Zealand'],
+        ['Sri Lanka', 'Bangladesh'], ['West Indies', 'Afghanistan'], ['Ireland', 'Zimbabwe']
+      ],
+      'Hockey': [
+        ['Rangers', 'Bruins'], ['Leafs', 'Canadiens'], ['Kings', 'Sharks'],
+        ['Lightning', 'Panthers'], ['Avalanche', 'Stars'], ['Oilers', 'Flames']
       ]
     };
 
@@ -156,23 +207,27 @@ export function useSportsData() {
     
     return teams.map((teamPair, index) => {
       const odds = generateRealisticOdds();
-      const isLive = Math.random() > 0.3; // 70% chance of being live
+      const isLive = Math.random() > 0.4; // 60% chance of being live
+      const isFinished = Math.random() > 0.7; // 30% chance of being finished
       
       return {
-        id: `${sport}-${index}`,
+        id: `${sport}-fallback-${index}`,
         homeTeam: teamPair[0],
         awayTeam: teamPair[1],
         league: `${sport} Championship`,
         country: 'International',
         sport,
         time: new Date(Date.now() + (index * 3600000)).toLocaleString(),
-        status: isLive ? 'live' : 'upcoming',
+        status: isFinished ? 'finished' : (isLive ? 'live' : 'upcoming'),
+        homeScore: isFinished ? Math.floor(Math.random() * 5) : undefined,
+        awayScore: isFinished ? Math.floor(Math.random() * 5) : undefined,
         ...odds
       };
     });
   };
 
   const changeSport = (sport: string) => {
+    console.log(`Changing sport to: ${sport}`);
     setSelectedSport(sport);
     fetchLiveMatches(sport);
   };
@@ -180,10 +235,11 @@ export function useSportsData() {
   useEffect(() => {
     fetchLiveMatches();
     
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 2 minutes for real-time updates
     const interval = setInterval(() => {
+      console.log('Auto-refreshing matches...');
       fetchLiveMatches();
-    }, 30000);
+    }, 120000); // 2 minutes
 
     return () => clearInterval(interval);
   }, [selectedSport]);

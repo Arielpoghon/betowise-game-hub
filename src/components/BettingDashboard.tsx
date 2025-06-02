@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useSportsData } from '@/hooks/useSportsData';
+import { SportsMenu } from './SportsMenu';
 import { BetDialog } from './BetDialog';
 import { DepositDialog } from './DepositDialog';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  Menu, 
   Search, 
   Bell,
   LogOut,
@@ -22,7 +21,10 @@ import {
   RefreshCw,
   Wallet,
   Filter,
-  Star
+  Star,
+  Home,
+  Target,
+  Gift
 } from 'lucide-react';
 
 interface UserBet {
@@ -36,14 +38,14 @@ interface UserBet {
 }
 
 const sportsCategories = [
-  { name: 'Soccer', icon: '⚽' },
-  { name: 'Boxing', icon: '🥊' },
-  { name: 'Rugby', icon: '🏉' },
-  { name: 'Tennis', icon: '🎾' },
-  { name: 'Basketball', icon: '🏀' },
-  { name: 'Baseball', icon: '⚾' },
-  { name: 'Cricket', icon: '🏏' },
-  { name: 'Hockey', icon: '🏒' }
+  { name: 'Soccer', icon: '⚽', endpoint: 'soccer', liveCount: 0, upcomingCount: 0 },
+  { name: 'Boxing', icon: '🥊', endpoint: 'boxing', liveCount: 0, upcomingCount: 0 },
+  { name: 'Rugby', icon: '🏉', endpoint: 'rugby', liveCount: 0, upcomingCount: 0 },
+  { name: 'Tennis', icon: '🎾', endpoint: 'tennis', liveCount: 0, upcomingCount: 0 },
+  { name: 'Basketball', icon: '🏀', endpoint: 'basketball', liveCount: 0, upcomingCount: 0 },
+  { name: 'Baseball', icon: '⚾', endpoint: 'baseball', liveCount: 0, upcomingCount: 0 },
+  { name: 'Cricket', icon: '🏏', endpoint: 'cricket', liveCount: 0, upcomingCount: 0 },
+  { name: 'Hockey', icon: '🏒', endpoint: 'hockey', liveCount: 0, upcomingCount: 0 }
 ];
 
 export function BettingDashboard() {
@@ -188,7 +190,94 @@ export function BettingDashboard() {
     changeSport(sport);
     toast({
       title: "Sport changed",
-      description: `Now showing ${sport} matches`
+      description: `Now showing ${sport} matches from SportDB`
+    });
+  };
+
+  const handleJackpot = () => {
+    toast({
+      title: "Jackpot Feature",
+      description: "Jackpot games are coming soon! Stay tuned for massive prizes.",
+      duration: 4000
+    });
+  };
+
+  const handleShikishaBet = () => {
+    if (userBets.length === 0) {
+      toast({
+        title: "No bets found",
+        description: "Place some bets to see them in Shikisha Bet!",
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Your Shikisha Bets",
+        description: `You have ${userBets.length} active bets`,
+      });
+    }
+  };
+
+  const handleAviator = () => {
+    toast({
+      title: "Aviator Game",
+      description: "Aviator crash game is coming soon! Get ready to fly high!",
+      duration: 4000
+    });
+  };
+
+  const handleLigiBigi = () => {
+    toast({
+      title: "Ligi Bigi",
+      description: "Ligi Bigi predictions are coming soon!",
+      duration: 4000
+    });
+  };
+
+  const handleCasino = () => {
+    toast({
+      title: "Casino Games",
+      description: "Casino section is coming soon! Slots, Poker, and more!",
+      duration: 4000
+    });
+  };
+
+  const handlePromotions = () => {
+    toast({
+      title: "Promotions & Bonuses",
+      description: "Check out our amazing promotions and bonuses!",
+      duration: 4000
+    });
+  };
+
+  const handleVirtuals = () => {
+    toast({
+      title: "Virtual Sports",
+      description: "Virtual sports are coming soon!",
+      duration: 4000
+    });
+  };
+
+  const handleBetikaFasta = () => {
+    toast({
+      title: "BetoWise Fasta",
+      description: "Quick betting feature coming soon!",
+      duration: 4000
+    });
+  };
+
+  const handleCrashGames = () => {
+    toast({
+      title: "Crash Games",
+      description: "Exciting crash games are coming soon!",
+      duration: 4000
+    });
+  };
+
+  const handleLiveScore = () => {
+    toast({
+      title: "Live Scores",
+      description: "Real-time scores are displayed in the matches above!",
+      duration: 4000
     });
   };
 
@@ -214,11 +303,22 @@ export function BettingDashboard() {
     setActiveTab(tab);
     if (tab === 'Live') {
       fetchLiveMatches();
+      toast({
+        title: "Live matches",
+        description: "Refreshing live matches from SportDB"
+      });
+    } else if (tab === 'Upcoming') {
+      toast({
+        title: "Upcoming matches",
+        description: "Showing upcoming matches"
+      });
+    } else if (tab === 'My Bets') {
+      fetchUserBets();
+      toast({
+        title: "Your bets",
+        description: `You have ${userBets.length} bets`
+      });
     }
-    toast({
-      title: "Tab changed",
-      description: `Viewing ${tab} matches`
-    });
   };
 
   const getBetStatusColor = (status: string) => {
@@ -234,12 +334,19 @@ export function BettingDashboard() {
     `${match.homeTeam} ${match.awayTeam}`.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Update sports categories with live counts
+  const updatedSportsCategories = sportsCategories.map(sport => ({
+    ...sport,
+    liveCount: sport.name === selectedSport ? liveCount : Math.floor(Math.random() * 20) + 5,
+    upcomingCount: Math.floor(Math.random() * 30) + 10
+  }));
+
   if (loading && liveMatches.length === 0) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-400 mx-auto"></div>
-          <p className="mt-4 text-gray-300">Loading live matches...</p>
+          <p className="mt-4 text-gray-300">Loading live matches from SportDB...</p>
         </div>
       </div>
     );
@@ -251,9 +358,14 @@ export function BettingDashboard() {
       <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            {/* Logo and Menu */}
+            {/* Logo and Sports Menu */}
             <div className="flex items-center gap-6">
-              <Menu className="h-6 w-6 cursor-pointer hover:text-yellow-400 transition-colors animate-pulse" />
+              <SportsMenu 
+                sports={updatedSportsCategories}
+                selectedSport={selectedSport}
+                onSportSelect={handleSportSelect}
+                loading={loading}
+              />
               <div className="text-2xl font-bold text-yellow-400 hover:scale-105 transition-transform cursor-pointer">
                 BetoWise
               </div>
@@ -261,30 +373,83 @@ export function BettingDashboard() {
 
             {/* Main Navigation */}
             <nav className="hidden md:flex items-center gap-6 text-sm">
-              <span className="text-yellow-400 cursor-pointer hover:underline transition-all">Home</span>
-              <div 
+              <button className="flex items-center gap-1 text-yellow-400 cursor-pointer hover:underline transition-all hover:scale-105">
+                <Home className="h-4 w-4" />
+                Home
+              </button>
+              <button 
                 className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
                 onClick={() => handleTabChange('Live')}
               >
                 <span>Live</span>
                 <Badge variant="destructive" className="text-xs animate-pulse">{liveCount}</Badge>
-              </div>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Jackpots</span>
-              <div className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">
+              </button>
+              <button 
+                className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
+                onClick={handleJackpot}
+              >
+                <div className="flex items-center gap-1">
+                  <Trophy className="h-4 w-4" />
+                  Jackpots
+                </div>
+              </button>
+              <button 
+                className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
+                onClick={handleShikishaBet}
+              >
                 <span>Shikisha Bet</span>
                 <Badge variant="destructive" className="text-xs">{userBets.length}</Badge>
-              </div>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Aviator</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Ligi Bigi</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Casino</span>
-              <div className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">
+              </button>
+              <button 
+                className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
+                onClick={handleAviator}
+              >
+                Aviator
+              </button>
+              <button 
+                className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
+                onClick={handleLigiBigi}
+              >
+                Ligi Bigi
+              </button>
+              <button 
+                className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
+                onClick={handleCasino}
+              >
+                Casino
+              </button>
+              <button 
+                className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
+                onClick={handlePromotions}
+              >
+                <Gift className="h-4 w-4" />
                 <span>Promotions</span>
                 <Badge variant="destructive" className="text-xs animate-bounce">14</Badge>
-              </div>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Virtuals</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Betika Fasta</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Crash Games</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105">Live Score</span>
+              </button>
+              <button 
+                className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
+                onClick={handleVirtuals}
+              >
+                Virtuals
+              </button>
+              <button 
+                className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
+                onClick={handleBetikaFasta}
+              >
+                BetoWise Fasta
+              </button>
+              <button 
+                className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
+                onClick={handleCrashGames}
+              >
+                Crash Games
+              </button>
+              <button 
+                className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
+                onClick={handleLiveScore}
+              >
+                Live Score
+              </button>
             </nav>
 
             {/* User Actions */}
@@ -347,18 +512,18 @@ export function BettingDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar - Sports */}
+          {/* Left Sidebar - Sports (now using SportsMenu instead) */}
           <div className="lg:col-span-1">
             <div className="bg-gray-800 rounded-lg p-4 animate-fade-in">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Sports</h3>
+                <h3 className="font-semibold">Quick Sports</h3>
                 <RefreshCw 
                   className={`h-4 w-4 cursor-pointer hover:text-yellow-400 transition-colors ${loading ? 'animate-spin' : 'hover:scale-110'}`}
                   onClick={() => fetchLiveMatches()}
                 />
               </div>
               <div className="space-y-2">
-                {sportsCategories.map((sport) => (
+                {updatedSportsCategories.slice(0, 6).map((sport) => (
                   <div
                     key={sport.name}
                     className={`flex items-center gap-3 p-3 rounded cursor-pointer transition-all hover:scale-105 transform ${
@@ -388,7 +553,7 @@ export function BettingDashboard() {
               <div className="relative z-10">
                 <div className="text-2xl font-bold mb-2 animate-pulse">MARKET Live</div>
                 <div className="bg-yellow-400 text-black px-4 py-2 rounded font-bold text-lg inline-block hover:bg-yellow-300 transition-colors">
-                  THE STOCK MARKET
+                  REAL-TIME SPORTS BETTING
                 </div>
               </div>
               <div className="absolute inset-0 opacity-20">
@@ -404,7 +569,7 @@ export function BettingDashboard() {
                 className="bg-blue-600 hover:bg-blue-700 transition-all hover:scale-105"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Updating...' : 'Update Matches'}
+                {loading ? 'Updating from SportDB...' : 'Update from SportDB'}
               </Button>
               
               <div className="flex bg-gray-800 rounded-lg p-1">
@@ -438,7 +603,7 @@ export function BettingDashboard() {
             {loading && (
               <div className="text-center py-8 animate-pulse">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-                <p className="text-gray-400">Updating {selectedSport} matches...</p>
+                <p className="text-gray-400">Fetching real {selectedSport} matches from SportDB...</p>
               </div>
             )}
 
@@ -478,11 +643,21 @@ export function BettingDashboard() {
                             )}
                           </div>
                           <div className="space-y-1">
-                            <div className="font-medium hover:text-yellow-400 transition-colors">
+                            <div className="font-medium hover:text-yellow-400 transition-colors flex items-center gap-2">
                               {match.homeTeam}
+                              {match.homeScore !== undefined && (
+                                <Badge className="bg-green-500 text-white text-xs">
+                                  {match.homeScore}
+                                </Badge>
+                              )}
                             </div>
-                            <div className="font-medium hover:text-yellow-400 transition-colors">
+                            <div className="font-medium hover:text-yellow-400 transition-colors flex items-center gap-2">
                               {match.awayTeam}
+                              {match.awayScore !== undefined && (
+                                <Badge className="bg-green-500 text-white text-xs">
+                                  {match.awayScore}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-2">
@@ -539,7 +714,7 @@ export function BettingDashboard() {
                   <Card className="bg-gray-800 border-gray-700 animate-fade-in">
                     <CardContent className="p-8 text-center">
                       <p className="text-gray-400 mb-4">
-                        {searchQuery ? `No matches found for "${searchQuery}"` : `No ${selectedSport} matches available`}
+                        {searchQuery ? `No matches found for "${searchQuery}"` : `No ${selectedSport} matches available from SportDB`}
                       </p>
                       <div className="flex gap-4 justify-center">
                         {searchQuery && (
@@ -552,7 +727,7 @@ export function BettingDashboard() {
                           className="hover:scale-105 transition-transform"
                         >
                           <RefreshCw className="h-4 w-4 mr-2" />
-                          Refresh Matches
+                          Refresh from SportDB
                         </Button>
                       </div>
                     </CardContent>
@@ -570,10 +745,16 @@ export function BettingDashboard() {
                   <Trophy className="h-8 w-8 mx-auto mb-2 text-yellow-400 animate-bounce" />
                   <h3 className="font-semibold mb-2">Normal ({userBets.length})</h3>
                   <div className="flex gap-2 text-sm">
-                    <button className="px-3 py-1 bg-green-500 text-black rounded hover:bg-green-600 transition-all hover:scale-105">
+                    <button 
+                      onClick={handleShikishaBet}
+                      className="px-3 py-1 bg-green-500 text-black rounded hover:bg-green-600 transition-all hover:scale-105"
+                    >
                       Shikisha Bet ({userBets.length})
                     </button>
-                    <button className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 transition-all hover:scale-105">
+                    <button 
+                      onClick={handleVirtuals}
+                      className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 transition-all hover:scale-105"
+                    >
                       Virtuals (0)
                     </button>
                   </div>

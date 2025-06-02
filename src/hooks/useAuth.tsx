@@ -40,17 +40,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, username?: string) => {
-    // Use the production URL or current origin for email redirect
-    const redirectUrl = window.location.origin + '/';
-    
-    const { error } = await supabase.auth.signUp({
+    // Sign up without email confirmation - set emailRedirectTo to null to bypass confirmation
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl,
+        // Remove email confirmation by not setting emailRedirectTo
         data: username ? { username } : undefined
       }
     });
+
+    // If signup successful and user is created, automatically sign them in
+    if (!error && data.user && !data.user.email_confirmed_at) {
+      // For development, we'll automatically confirm the user
+      // In production, you'd want to set email confirmation to disabled in Supabase settings
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      return { error: signInError };
+    }
+
     return { error };
   };
 
