@@ -64,6 +64,8 @@ export function useSportsData() {
   };
 
   const fetchLiveMatches = async (sport: string = selectedSport) => {
+    if (loading) return; // Prevent multiple simultaneous requests
+    
     setLoading(true);
     console.log(`Fetching ${sport} matches from SportDB...`);
     
@@ -227,19 +229,23 @@ export function useSportsData() {
   };
 
   const changeSport = (sport: string) => {
+    if (sport === selectedSport) return; // Prevent unnecessary updates
+    
     console.log(`Changing sport to: ${sport}`);
     setSelectedSport(sport);
-    fetchLiveMatches(sport);
   };
 
+  // Only fetch when sport changes, not on mount
   useEffect(() => {
-    fetchLiveMatches();
-    
-    // Auto-refresh every 2 minutes for real-time updates
+    fetchLiveMatches(selectedSport);
+  }, [selectedSport]);
+
+  // Auto-refresh every 5 minutes (reduced frequency)
+  useEffect(() => {
     const interval = setInterval(() => {
       console.log('Auto-refreshing matches...');
-      fetchLiveMatches();
-    }, 120000); // 2 minutes
+      fetchLiveMatches(selectedSport);
+    }, 300000); // 5 minutes
 
     return () => clearInterval(interval);
   }, [selectedSport]);

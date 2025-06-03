@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useSportsData } from '@/hooks/useSportsData';
+import { useRealTimeMatches } from '@/hooks/useRealTimeMatches';
 import { SportsMenu } from './SportsMenu';
 import { BetDialog } from './BetDialog';
 import { DepositDialog } from './DepositDialog';
@@ -65,13 +65,15 @@ export function BettingDashboard() {
   const { toast } = useToast();
   
   const { 
+    matches,
     liveMatches, 
+    upcomingMatches,
+    finishedMatches,
     loading, 
     selectedSport, 
-    liveCount, 
-    fetchLiveMatches, 
-    changeSport 
-  } = useSportsData();
+    changeSport,
+    refreshMatches
+  } = useRealTimeMatches();
 
   useEffect(() => {
     fetchUserBets();
@@ -103,7 +105,7 @@ export function BettingDashboard() {
     }
   };
 
-  const handleBetClick = (match: any, team: string, odds: number) => {
+  const handleBetClick = (match: any, team: string, odds: string) => {
     if (!profile) {
       toast({
         title: "Please log in",
@@ -125,7 +127,7 @@ export function BettingDashboard() {
 
     setSelectedMatch(match);
     setSelectedTeam(team);
-    setSelectedOdds(odds);
+    setSelectedOdds(parseFloat(odds));
     setShowBetDialog(true);
 
     toast({
@@ -190,7 +192,7 @@ export function BettingDashboard() {
     changeSport(sport);
     toast({
       title: "Sport changed",
-      description: `Now showing ${sport} matches from SportDB`
+      description: `Now showing ${sport} matches`
     });
   };
 
@@ -330,8 +332,23 @@ export function BettingDashboard() {
     }
   };
 
-  const filteredMatches = liveMatches.filter(match => 
-    `${match.homeTeam} ${match.awayTeam}`.toLowerCase().includes(searchQuery.toLowerCase())
+  const getDisplayMatches = () => {
+    switch (activeTab) {
+      case 'Live':
+        return liveMatches;
+      case 'Upcoming':
+        return upcomingMatches;
+      case 'Finished':
+        return finishedMatches;
+      case 'My Bets':
+        return [];
+      default:
+        return matches;
+    }
+  };
+
+  const filteredMatches = getDisplayMatches().filter(match => 
+    `${match.home_team} ${match.away_team}`.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Update sports categories with live counts
@@ -341,12 +358,12 @@ export function BettingDashboard() {
     upcomingCount: Math.floor(Math.random() * 30) + 10
   }));
 
-  if (loading && liveMatches.length === 0) {
+  if (loading && matches.length === 0) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-400 mx-auto"></div>
-          <p className="mt-4 text-gray-300">Loading live matches from SportDB...</p>
+          <p className="mt-4 text-gray-300">Loading live matches...</p>
         </div>
       </div>
     );
@@ -512,71 +529,34 @@ export function BettingDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar - Sports (now using SportsMenu instead) */}
+          {/* Left Sidebar - Sports */}
           <div className="lg:col-span-1">
-            <div className="bg-gray-800 rounded-lg p-4 animate-fade-in">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Quick Sports</h3>
-                <RefreshCw 
-                  className={`h-4 w-4 cursor-pointer hover:text-yellow-400 transition-colors ${loading ? 'animate-spin' : 'hover:scale-110'}`}
-                  onClick={() => fetchLiveMatches()}
-                />
-              </div>
-              <div className="space-y-2">
-                {updatedSportsCategories.slice(0, 6).map((sport) => (
-                  <div
-                    key={sport.name}
-                    className={`flex items-center gap-3 p-3 rounded cursor-pointer transition-all hover:scale-105 transform ${
-                      selectedSport === sport.name
-                        ? 'bg-yellow-400 text-black shadow-lg'
-                        : 'hover:bg-gray-700 hover:shadow-md'
-                    }`}
-                    onClick={() => handleSportSelect(sport.name)}
-                  >
-                    <span className="text-lg animate-bounce">{sport.icon}</span>
-                    <span className="text-sm font-medium">{sport.name}</span>
-                    {selectedSport === sport.name && (
-                      <Badge className="ml-auto bg-black text-yellow-400 text-xs">
-                        {filteredMatches.length}
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <SportsMenu 
+              sports={sportsCategories}
+              selectedSport={selectedSport}
+              onSportSelect={handleSportSelect}
+              loading={loading}
+            />
           </div>
 
           {/* Main Content */}
           <div className="lg:col-span-2">
-            {/* Market Banner */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 mb-6 relative overflow-hidden hover:shadow-xl transition-all cursor-pointer hover:scale-105 animate-fade-in">
-              <div className="relative z-10">
-                <div className="text-2xl font-bold mb-2 animate-pulse">MARKET Live</div>
-                <div className="bg-yellow-400 text-black px-4 py-2 rounded font-bold text-lg inline-block hover:bg-yellow-300 transition-colors">
-                  REAL-TIME SPORTS BETTING
-                </div>
-              </div>
-              <div className="absolute inset-0 opacity-20">
-                <TrendingUp className="h-full w-full animate-pulse" />
-              </div>
-            </div>
-
             {/* Update Matches Button */}
             <div className="mb-6 flex gap-4 animate-fade-in">
               <Button 
-                onClick={() => fetchLiveMatches()} 
+                onClick={refreshMatches} 
                 disabled={loading}
                 className="bg-blue-600 hover:bg-blue-700 transition-all hover:scale-105"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                {loading ? 'Updating from SportDB...' : 'Update from SportDB'}
+                {loading ? 'Updating...' : 'Update Matches'}
               </Button>
               
               <div className="flex bg-gray-800 rounded-lg p-1">
-                {['Live', 'Upcoming', 'My Bets'].map((tab) => (
+                {['Live', 'Upcoming', 'Finished', 'My Bets'].map((tab) => (
                   <button 
                     key={tab}
-                    onClick={() => handleTabChange(tab)}
+                    onClick={() => setActiveTab(tab)}
                     className={`px-4 py-2 rounded font-semibold transition-all hover:scale-105 ${
                       activeTab === tab 
                         ? 'bg-yellow-400 text-black shadow-lg' 
@@ -586,56 +566,68 @@ export function BettingDashboard() {
                     {tab}
                     {tab === 'Live' && (
                       <Badge className="ml-2 bg-red-500 text-white text-xs animate-pulse">
-                        {liveCount}
+                        {liveMatches.length}
+                      </Badge>
+                    )}
+                    {tab === 'My Bets' && (
+                      <Badge className="ml-2 bg-blue-500 text-white text-xs">
+                        {userBets.length}
                       </Badge>
                     )}
                   </button>
                 ))}
               </div>
-              
-              <Button variant="outline" className="hover:bg-gray-700 transition-colors hover:scale-105">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
             </div>
 
-            {/* Loading State */}
-            {loading && (
-              <div className="text-center py-8 animate-pulse">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-                <p className="text-gray-400">Fetching real {selectedSport} matches from SportDB...</p>
+            {/* Matches Display */}
+            {activeTab === 'My Bets' ? (
+              <div className="space-y-4">
+                <h3 className="text-xl font-bold mb-4">Your Bets</h3>
+                {userBets.map((bet) => (
+                  <Card key={bet.id} className="bg-gray-800 border-gray-700">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">{bet.team_choice}</p>
+                          <p className="text-sm text-gray-400">Amount: ${bet.amount}</p>
+                        </div>
+                        <Badge className={`${
+                          bet.status === 'won' ? 'bg-green-500' :
+                          bet.status === 'lost' ? 'bg-red-500' :
+                          bet.status === 'void' ? 'bg-gray-500' : 'bg-yellow-500'
+                        }`}>
+                          {bet.status}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {userBets.length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    <p>No bets placed yet</p>
+                  </div>
+                )}
               </div>
-            )}
-
-            {/* Matches */}
-            {!loading && (
+            ) : (
               <div className="space-y-4">
                 {/* Match Header */}
-                <div className="grid grid-cols-12 gap-4 text-gray-400 text-sm px-4 animate-fade-in">
-                  <div className="col-span-6">
-                    Teams • {selectedSport} • Live: {filteredMatches.filter(m => m.status === 'live').length}
-                  </div>
+                <div className="grid grid-cols-12 gap-4 text-gray-400 text-sm px-4">
+                  <div className="col-span-6">Teams • {selectedSport} • {activeTab}: {filteredMatches.length}</div>
                   <div className="col-span-2 text-center">1</div>
                   <div className="col-span-2 text-center">X</div>
                   <div className="col-span-2 text-center">2</div>
                 </div>
 
                 {filteredMatches.map((match, index) => (
-                  <Card 
-                    key={match.id} 
-                    className="bg-gray-800 border-gray-700 hover:bg-gray-750 transition-all hover:shadow-xl hover:scale-105 animate-fade-in"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
+                  <Card key={match.id} className="bg-gray-800 border-gray-700 hover:bg-gray-750 transition-all">
                     <CardContent className="p-4">
                       <div className="grid grid-cols-12 gap-4 items-center">
                         {/* Teams and League Info */}
                         <div className="col-span-6">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs">🌍</span>
                             <span className="text-sm text-gray-400">
                               {match.country} • {match.league}
                             </span>
-                            <Star className="h-3 w-3 text-yellow-400 animate-pulse" />
                             {match.status === 'live' && (
                               <Badge className="bg-red-500 text-white text-xs animate-pulse">
                                 LIVE
@@ -643,26 +635,24 @@ export function BettingDashboard() {
                             )}
                           </div>
                           <div className="space-y-1">
-                            <div className="font-medium hover:text-yellow-400 transition-colors flex items-center gap-2">
-                              {match.homeTeam}
-                              {match.homeScore !== undefined && (
-                                <Badge className="bg-green-500 text-white text-xs">
-                                  {match.homeScore}
-                                </Badge>
+                            <div className="font-medium flex items-center justify-between">
+                              <span>{match.home_team}</span>
+                              {match.home_score !== null && (
+                                <span className="text-yellow-400 font-bold">{match.home_score}</span>
                               )}
                             </div>
-                            <div className="font-medium hover:text-yellow-400 transition-colors flex items-center gap-2">
-                              {match.awayTeam}
-                              {match.awayScore !== undefined && (
-                                <Badge className="bg-green-500 text-white text-xs">
-                                  {match.awayScore}
-                                </Badge>
+                            <div className="font-medium flex items-center justify-between">
+                              <span>{match.away_team}</span>
+                              {match.away_score !== null && (
+                                <span className="text-yellow-400 font-bold">{match.away_score}</span>
                               )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-2">
                             <Clock className="h-3 w-3 text-gray-400" />
-                            <span className="text-xs text-gray-400">{match.time}</span>
+                            <span className="text-xs text-gray-400">
+                              {new Date(match.start_time).toLocaleString()}
+                            </span>
                           </div>
                         </div>
 
@@ -670,51 +660,45 @@ export function BettingDashboard() {
                         <div className="col-span-2">
                           <Button 
                             variant="outline" 
-                            className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-110 shadow-lg"
-                            onClick={() => handleBetClick(match, match.homeTeam, match.homeOdds)}
+                            className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all"
+                            onClick={() => handleBetClick(match, match.home_team, match.home_odds)}
                             disabled={!profile || profile.balance <= 0}
                           >
-                            {match.homeOdds}
+                            {match.home_odds}
                           </Button>
+                        </div>
+                        <div className="col-span-2">
+                          {match.draw_odds && (
+                            <Button 
+                              variant="outline" 
+                              className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all"
+                              onClick={() => handleBetClick(match, 'Draw', match.draw_odds)}
+                              disabled={!profile || profile.balance <= 0}
+                            >
+                              {match.draw_odds}
+                            </Button>
+                          )}
                         </div>
                         <div className="col-span-2">
                           <Button 
                             variant="outline" 
-                            className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-110 shadow-lg"
-                            onClick={() => handleBetClick(match, 'Draw', match.drawOdds)}
+                            className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all"
+                            onClick={() => handleBetClick(match, match.away_team, match.away_odds)}
                             disabled={!profile || profile.balance <= 0}
                           >
-                            {match.drawOdds}
+                            {match.away_odds}
                           </Button>
                         </div>
-                        <div className="col-span-2">
-                          <Button 
-                            variant="outline" 
-                            className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-110 shadow-lg"
-                            onClick={() => handleBetClick(match, match.awayTeam, match.awayOdds)}
-                            disabled={!profile || profile.balance <= 0}
-                          >
-                            {match.awayOdds}
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {/* Additional Markets */}
-                      <div className="mt-3 text-right">
-                        <span className="text-green-400 text-sm cursor-pointer hover:underline flex items-center justify-end gap-1 hover:text-green-300 transition-all hover:scale-105">
-                          <Plus className="h-3 w-3" />
-                          {Math.floor(Math.random() * 50) + 30} Markets
-                        </span>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
 
-                {filteredMatches.length === 0 && (
-                  <Card className="bg-gray-800 border-gray-700 animate-fade-in">
+                {filteredMatches.length === 0 && !loading && (
+                  <Card className="bg-gray-800 border-gray-700">
                     <CardContent className="p-8 text-center">
                       <p className="text-gray-400 mb-4">
-                        {searchQuery ? `No matches found for "${searchQuery}"` : `No ${selectedSport} matches available from SportDB`}
+                        {searchQuery ? `No matches found for "${searchQuery}"` : `No ${activeTab.toLowerCase()} matches available`}
                       </p>
                       <div className="flex gap-4 justify-center">
                         {searchQuery && (
@@ -722,12 +706,9 @@ export function BettingDashboard() {
                             Clear Search
                           </Button>
                         )}
-                        <Button 
-                          onClick={() => fetchLiveMatches()} 
-                          className="hover:scale-105 transition-transform"
-                        >
+                        <Button onClick={refreshMatches}>
                           <RefreshCw className="h-4 w-4 mr-2" />
-                          Refresh from SportDB
+                          Refresh Matches
                         </Button>
                       </div>
                     </CardContent>

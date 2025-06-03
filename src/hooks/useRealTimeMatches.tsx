@@ -56,7 +56,15 @@ export function useRealTimeMatches() {
         throw error;
       }
 
-      setMatches(data || []);
+      // Convert numeric odds to strings for consistency
+      const formattedMatches = (data || []).map(match => ({
+        ...match,
+        home_odds: match.home_odds?.toString() || '1.00',
+        draw_odds: match.draw_odds?.toString() || null,
+        away_odds: match.away_odds?.toString() || '1.00'
+      }));
+
+      setMatches(formattedMatches);
     } catch (error: any) {
       console.error('Error fetching matches:', error);
       toast({
