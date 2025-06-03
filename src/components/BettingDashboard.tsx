@@ -75,6 +75,9 @@ export function BettingDashboard() {
     refreshMatches
   } = useRealTimeMatches();
 
+  // Calculate live count from liveMatches array
+  const liveCount = liveMatches.length;
+
   useEffect(() => {
     fetchUserBets();
     
@@ -304,7 +307,7 @@ export function BettingDashboard() {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     if (tab === 'Live') {
-      fetchLiveMatches();
+      refreshMatches();
       toast({
         title: "Live matches",
         description: "Refreshing live matches from SportDB"
