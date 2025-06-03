@@ -5,9 +5,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AuthForm } from './AuthForm';
 import { useToast } from '@/hooks/use-toast';
-import { useSportsData } from '@/hooks/useSportsData';
+import { useRealTimeMatches } from '@/hooks/useRealTimeMatches';
+import { SportsHamburgerMenu } from './SportsHamburgerMenu';
 import { 
-  Menu, 
   Search, 
   Bell, 
   TrendingUp,
@@ -19,17 +19,6 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-const sportsCategories = [
-  { name: 'Soccer', icon: '⚽' },
-  { name: 'Boxing', icon: '🥊' },
-  { name: 'Rugby', icon: '🏉' },
-  { name: 'Tennis', icon: '🎾' },
-  { name: 'Basketball', icon: '🏀' },
-  { name: 'Baseball', icon: '⚾' },
-  { name: 'Cricket', icon: '🏏' },
-  { name: 'Hockey', icon: '🏒' }
-];
-
 export function PublicLandingPage() {
   const [showAuthForm, setShowAuthForm] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -37,13 +26,14 @@ export function PublicLandingPage() {
   const [activeTab, setActiveTab] = useState('Live');
   
   const { 
+    matches,
     liveMatches, 
+    upcomingMatches,
     loading, 
     selectedSport, 
-    liveCount, 
-    fetchLiveMatches, 
-    changeSport 
-  } = useSportsData();
+    changeSport,
+    refreshMatches
+  } = useRealTimeMatches();
 
   const { toast } = useToast();
 
@@ -59,7 +49,7 @@ export function PublicLandingPage() {
     changeSport(sport);
     toast({
       title: "Sport changed",
-      description: `Now showing ${sport} matches`
+      description: `Now showing ${sport === 'All' ? 'all' : sport} matches`
     });
   };
 
@@ -73,39 +63,7 @@ export function PublicLandingPage() {
     }
   };
 
-  const handleLiveClick = () => {
-    setActiveTab('Live');
-    toast({
-      title: "Live matches",
-      description: `Viewing ${liveCount} live matches`
-    });
-  };
-
-  const handleJackpotsClick = () => {
-    toast({
-      title: "Jackpots",
-      description: "Sign up to view available jackpots worth over $1M!"
-    });
-    setShowAuthForm(true);
-  };
-
-  const handleShikishaClick = () => {
-    toast({
-      title: "Shikisha Bet",
-      description: "Multi-bet feature available after registration"
-    });
-    setShowAuthForm(true);
-  };
-
-  const handlePromotionsClick = () => {
-    toast({
-      title: "Promotions",
-      description: "14 active promotions available for new users!"
-    });
-    setShowAuthForm(true);
-  };
-
-  const handleOddsClick = (team: string, odds: number) => {
+  const handleOddsClick = (team: string, odds: string) => {
     toast({
       title: "Sign up required",
       description: `Sign up to bet on ${team} at ${odds} odds`
@@ -115,17 +73,25 @@ export function PublicLandingPage() {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    if (tab === 'Live') {
-      fetchLiveMatches();
-    }
     toast({
       title: "Tab changed",
       description: `Viewing ${tab} matches`
     });
   };
 
-  const filteredMatches = liveMatches.filter(match => 
-    `${match.homeTeam} ${match.awayTeam}`.toLowerCase().includes(searchQuery.toLowerCase())
+  const getDisplayMatches = () => {
+    switch (activeTab) {
+      case 'Live':
+        return liveMatches;
+      case 'Upcoming':
+        return upcomingMatches;
+      default:
+        return matches;
+    }
+  };
+
+  const filteredMatches = getDisplayMatches().filter(match => 
+    `${match.home_team} ${match.away_team}`.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (showAuthForm) {
@@ -140,7 +106,10 @@ export function PublicLandingPage() {
           <div className="flex items-center justify-between h-16">
             {/* Logo and Menu */}
             <div className="flex items-center gap-6">
-              <Menu className="h-6 w-6 cursor-pointer hover:text-yellow-400 transition-colors animate-pulse" />
+              <SportsHamburgerMenu 
+                onSportSelect={handleSportSelect}
+                selectedSport={selectedSport}
+              />
               <div className="text-2xl font-bold text-yellow-400 hover:scale-105 transition-transform cursor-pointer">
                 BetoWise!
               </div>
@@ -151,38 +120,20 @@ export function PublicLandingPage() {
               <span className="text-yellow-400 cursor-pointer hover:underline transition-all">Home</span>
               <div 
                 className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
-                onClick={handleLiveClick}
+                onClick={() => handleTabChange('Live')}
               >
                 <span>Live</span>
-                <Badge variant="destructive" className="text-xs animate-pulse">{liveCount}</Badge>
+                <Badge variant="destructive" className="text-xs animate-pulse">{liveMatches.length}</Badge>
               </div>
               <span 
                 className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
-                onClick={handleJackpotsClick}
+                onClick={handleAuthClick}
               >
                 Jackpots
               </span>
-              <div 
-                className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
-                onClick={handleShikishaClick}
-              >
-                <span>Shikisha Bet</span>
-                <Badge variant="destructive" className="text-xs">6</Badge>
-              </div>
               <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105" onClick={handleAuthClick}>Aviator</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105" onClick={handleAuthClick}>Ligi Bigi</span>
               <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105" onClick={handleAuthClick}>Casino</span>
-              <div 
-                className="flex items-center gap-1 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105"
-                onClick={handlePromotionsClick}
-              >
-                <span>Promotions</span>
-                <Badge variant="destructive" className="text-xs animate-bounce">14</Badge>
-              </div>
               <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105" onClick={handleAuthClick}>Virtuals</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105" onClick={handleAuthClick}>BetoWise Fasta</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105" onClick={handleAuthClick}>Crash Games</span>
-              <span className="cursor-pointer hover:text-yellow-400 transition-colors hover:scale-105" onClick={handleAuthClick}>Live Score</span>
             </nav>
 
             {/* Auth Buttons */}
@@ -233,59 +184,50 @@ export function PublicLandingPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar - Sports */}
+          {/* Left Sidebar - Quick Stats */}
           <div className="lg:col-span-1">
             <div className="bg-gray-800 rounded-lg p-4 animate-fade-in">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Sports</h3>
+                <h3 className="font-semibold">Current Sport</h3>
                 <RefreshCw 
                   className={`h-4 w-4 cursor-pointer hover:text-yellow-400 transition-colors ${loading ? 'animate-spin' : 'hover:scale-110'}`}
-                  onClick={() => fetchLiveMatches()}
+                  onClick={refreshMatches}
                 />
               </div>
-              <div className="space-y-2">
-                {sportsCategories.map((sport) => (
-                  <div
-                    key={sport.name}
-                    className={`flex items-center gap-3 p-3 rounded cursor-pointer transition-all hover:scale-105 transform ${
-                      selectedSport === sport.name
-                        ? 'bg-yellow-400 text-black shadow-lg'
-                        : 'hover:bg-gray-700 hover:shadow-md'
-                    }`}
-                    onClick={() => handleSportSelect(sport.name)}
-                  >
-                    <span className="text-lg animate-bounce">{sport.icon}</span>
-                    <span className="text-sm font-medium">{sport.name}</span>
-                    {selectedSport === sport.name && (
-                      <Badge className="ml-auto bg-black text-yellow-400 text-xs">
-                        {filteredMatches.length}
-                      </Badge>
-                    )}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-400 mb-2">
+                  {selectedSport}
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Live:</span>
+                    <Badge className="bg-red-500 text-white animate-pulse">
+                      {liveMatches.length}
+                    </Badge>
                   </div>
-                ))}
+                  <div className="flex justify-between">
+                    <span>Upcoming:</span>
+                    <Badge className="bg-blue-500 text-white">
+                      {upcomingMatches.length}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total:</span>
+                    <Badge className="bg-green-500 text-white">
+                      {matches.length}
+                    </Badge>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Main Content */}
           <div className="lg:col-span-2">
-            {/* Market Banner */}
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 mb-6 relative overflow-hidden hover:shadow-xl transition-all cursor-pointer hover:scale-105 animate-fade-in">
-              <div className="relative z-10">
-                <div className="text-2xl font-bold mb-2 animate-pulse">MARKET Live</div>
-                <div className="bg-yellow-400 text-black px-4 py-2 rounded font-bold text-lg inline-block hover:bg-yellow-300 transition-colors">
-                  THE STOCK MARKET
-                </div>
-              </div>
-              <div className="absolute inset-0 opacity-20">
-                <TrendingUp className="h-full w-full animate-pulse" />
-              </div>
-            </div>
-
             {/* Match Navigation */}
             <div className="flex items-center gap-4 mb-6 animate-fade-in">
               <div className="flex bg-gray-800 rounded-lg p-1">
-                {['Live', 'Upcoming', 'Popular', 'Favorites'].map((tab) => (
+                {['Live', 'Upcoming', 'All'].map((tab) => (
                   <button 
                     key={tab}
                     onClick={() => handleTabChange(tab)}
@@ -298,7 +240,7 @@ export function PublicLandingPage() {
                     {tab}
                     {tab === 'Live' && (
                       <Badge className="ml-2 bg-red-500 text-white text-xs animate-pulse">
-                        {liveCount}
+                        {liveMatches.length}
                       </Badge>
                     )}
                   </button>
@@ -307,7 +249,7 @@ export function PublicLandingPage() {
               <Button 
                 variant="outline" 
                 className="hover:bg-gray-700 transition-all hover:scale-105"
-                onClick={() => fetchLiveMatches()}
+                onClick={refreshMatches}
                 disabled={loading}
               >
                 <Filter className="h-4 w-4 mr-2" />
@@ -329,7 +271,7 @@ export function PublicLandingPage() {
                 {/* Match Header */}
                 <div className="grid grid-cols-12 gap-4 text-gray-400 text-sm px-4 animate-fade-in">
                   <div className="col-span-6">
-                    Teams • {selectedSport} • Live: {filteredMatches.filter(m => m.status === 'live').length}
+                    Teams • {selectedSport} • {activeTab}: {filteredMatches.length}
                   </div>
                   <div className="col-span-2 text-center">1</div>
                   <div className="col-span-2 text-center">X</div>
@@ -359,16 +301,24 @@ export function PublicLandingPage() {
                             )}
                           </div>
                           <div className="space-y-1">
-                            <div className="font-medium hover:text-yellow-400 transition-colors">
-                              {match.homeTeam}
+                            <div className="font-medium hover:text-yellow-400 transition-colors flex items-center justify-between">
+                              <span>{match.home_team}</span>
+                              {match.home_score !== null && (
+                                <span className="text-yellow-400 font-bold">{match.home_score}</span>
+                              )}
                             </div>
-                            <div className="font-medium hover:text-yellow-400 transition-colors">
-                              {match.awayTeam}
+                            <div className="font-medium hover:text-yellow-400 transition-colors flex items-center justify-between">
+                              <span>{match.away_team}</span>
+                              {match.away_score !== null && (
+                                <span className="text-yellow-400 font-bold">{match.away_score}</span>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-2">
                             <Clock className="h-3 w-3 text-gray-400" />
-                            <span className="text-xs text-gray-400">{match.time}</span>
+                            <span className="text-xs text-gray-400">
+                              {new Date(match.start_time).toLocaleString()}
+                            </span>
                           </div>
                         </div>
 
@@ -377,27 +327,29 @@ export function PublicLandingPage() {
                           <Button 
                             variant="outline" 
                             className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-110 shadow-lg"
-                            onClick={() => handleOddsClick(match.homeTeam, match.homeOdds)}
+                            onClick={() => handleOddsClick(match.home_team, match.home_odds)}
                           >
-                            {match.homeOdds}
+                            {match.home_odds}
                           </Button>
+                        </div>
+                        <div className="col-span-2">
+                          {match.draw_odds && (
+                            <Button 
+                              variant="outline" 
+                              className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-110 shadow-lg"
+                              onClick={() => handleOddsClick('Draw', match.draw_odds)}
+                            >
+                              {match.draw_odds}
+                            </Button>
+                          )}
                         </div>
                         <div className="col-span-2">
                           <Button 
                             variant="outline" 
                             className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-110 shadow-lg"
-                            onClick={() => handleOddsClick('Draw', match.drawOdds)}
+                            onClick={() => handleOddsClick(match.away_team, match.away_odds)}
                           >
-                            {match.drawOdds}
-                          </Button>
-                        </div>
-                        <div className="col-span-2">
-                          <Button 
-                            variant="outline" 
-                            className="w-full bg-gray-700 border-gray-600 hover:bg-green-600 hover:border-green-500 transition-all hover:scale-110 shadow-lg"
-                            onClick={() => handleOddsClick(match.awayTeam, match.awayOdds)}
-                          >
-                            {match.awayOdds}
+                            {match.away_odds}
                           </Button>
                         </div>
                       </div>
@@ -420,7 +372,7 @@ export function PublicLandingPage() {
                   <Card className="bg-gray-800 border-gray-700 animate-fade-in">
                     <CardContent className="p-8 text-center">
                       <p className="text-gray-400 mb-4">
-                        {searchQuery ? `No matches found for "${searchQuery}"` : `No ${selectedSport} matches available`}
+                        {searchQuery ? `No matches found for "${searchQuery}"` : `No ${activeTab.toLowerCase()} ${selectedSport} matches available`}
                       </p>
                       <div className="flex gap-4 justify-center">
                         {searchQuery && (
@@ -429,7 +381,7 @@ export function PublicLandingPage() {
                           </Button>
                         )}
                         <Button 
-                          onClick={() => fetchLiveMatches()} 
+                          onClick={refreshMatches} 
                           className="hover:scale-105 transition-transform"
                         >
                           <RefreshCw className="h-4 w-4 mr-2" />
@@ -449,47 +401,33 @@ export function PublicLandingPage() {
               <CardContent className="p-4">
                 <div className="text-center mb-4">
                   <Trophy className="h-8 w-8 mx-auto mb-2 text-yellow-400 animate-bounce" />
-                  <h3 className="font-semibold mb-2">Normal (0)</h3>
-                  <div className="flex gap-2 text-sm">
-                    <button 
-                      className="px-3 py-1 bg-green-500 text-black rounded hover:bg-green-600 transition-all hover:scale-105"
-                      onClick={handleShikishaClick}
-                    >
-                      Shikisha Bet (0)
-                    </button>
-                    <button 
-                      className="px-3 py-1 bg-gray-700 rounded hover:bg-gray-600 transition-all hover:scale-105"
-                      onClick={handleAuthClick}
-                    >
-                      Virtuals (0)
-                    </button>
-                  </div>
+                  <h3 className="font-semibold mb-2">Betslip (0)</h3>
                 </div>
                 
                 <div className="text-center py-8 text-gray-400">
-                  <p className="mb-4">Do you have a shared betslip code? Enter it here.</p>
-                  <div className="mb-4">
-                    <input 
-                      type="text" 
-                      placeholder="e.g. VBmSU"
-                      className="w-full p-2 bg-gray-700 border border-gray-600 rounded text-center focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all hover:border-yellow-400"
-                    />
-                  </div>
+                  <p className="mb-4">Ready to start betting on live matches?</p>
                   <Button 
-                    className="w-full bg-green-500 hover:bg-green-600 text-black mb-4 transition-all hover:scale-105"
+                    className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold transition-all hover:scale-105 animate-pulse"
                     onClick={handleAuthClick}
                   >
-                    Load Betslip
+                    Sign Up Now
                   </Button>
                   
                   <div className="mt-6 pt-6 border-t border-gray-700">
-                    <p className="text-sm mb-4">Ready to start betting on live matches?</p>
-                    <Button 
-                      className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold transition-all hover:scale-105 animate-pulse"
-                      onClick={handleAuthClick}
-                    >
-                      Sign Up Now
-                    </Button>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>Live Matches:</span>
+                        <Badge className="bg-red-500 text-white animate-pulse">
+                          {liveMatches.length}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Upcoming:</span>
+                        <Badge className="bg-blue-500 text-white">
+                          {upcomingMatches.length}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>

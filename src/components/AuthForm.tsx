@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, UserPlus, LogIn } from 'lucide-react';
+import { EmailVerification } from './EmailVerification';
 
 interface AuthFormProps {
   onBack?: () => void;
@@ -17,7 +18,9 @@ export function AuthForm({ onBack }: AuthFormProps) {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const [showVerification, setShowVerification] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
+  const { signIn, signUp, verifyEmail } = useAuth();
   const { toast } = useToast();
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -46,13 +49,20 @@ export function AuthForm({ onBack }: AuthFormProps) {
     e.preventDefault();
     setLoading(true);
     
-    const { error } = await signUp(email, password, username);
+    const { error, needsVerification } = await signUp(email, password, username);
     
     if (error) {
       toast({
         title: "Error creating account",
         description: error.message,
         variant: "destructive"
+      });
+    } else if (needsVerification) {
+      setPendingEmail(email);
+      setShowVerification(true);
+      toast({
+        title: "Verification required",
+        description: "Please check your email for the verification code.",
       });
     } else {
       toast({
@@ -69,6 +79,42 @@ export function AuthForm({ onBack }: AuthFormProps) {
     setLoading(false);
   };
 
+  const handleEmailVerified = async () => {
+    // After email verification, sign the user in
+    const { error } = await signIn(pendingEmail, password);
+    
+    if (error) {
+      toast({
+        title: "Error signing in",
+        description: "Please try logging in manually.",
+        variant: "destructive"
+      });
+      setShowVerification(false);
+    } else {
+      toast({
+        title: "Welcome to BetoWise!",
+        description: "Your account has been verified and you're now logged in.",
+        duration: 5000
+      });
+      setShowVerification(false);
+      // Clear form
+      setEmail('');
+      setPassword('');
+      setUsername('');
+      setPendingEmail('');
+    }
+  };
+
+  if (showVerification) {
+    return (
+      <EmailVerification
+        email={pendingEmail}
+        onVerified={handleEmailVerified}
+        onBack={() => setShowVerification(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 p-4">
       <Card className="w-full max-w-md bg-gray-800 border-gray-700 animate-fade-in">
@@ -84,7 +130,7 @@ export function AuthForm({ onBack }: AuthFormProps) {
             </CardTitle>
           </div>
           <CardDescription className="text-center text-gray-300">
-            Join the ultimate betting platform - No email confirmation required!
+            Join the ultimate betting platform with email verification!
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -161,15 +207,15 @@ export function AuthForm({ onBack }: AuthFormProps) {
                   minLength={6}
                   className="bg-gray-700 border-gray-600 text-white hover:border-yellow-400 focus:border-yellow-400 transition-colors"
                 />
-                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded text-sm">
-                  ✅ Instant activation - No email confirmation required!
+                <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded text-sm">
+                  ✅ Email verification required for account security
                 </div>
                 <Button 
                   type="submit" 
                   className="w-full bg-green-500 hover:bg-green-600 text-black font-semibold hover:scale-105 transition-all" 
                   disabled={loading}
                 >
-                  {loading ? 'Creating account...' : 'Create Account & Sign In'}
+                  {loading ? 'Creating account...' : 'Create Account'}
                 </Button>
               </form>
             </TabsContent>

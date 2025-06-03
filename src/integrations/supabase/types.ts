@@ -39,24 +39,87 @@ export type Database = {
         }
         Relationships: []
       }
-      matches: {
+      email_verifications: {
         Row: {
           created_at: string
+          email: string
+          expires_at: string
           id: string
+          verification_code: string
+          verified: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          verification_code: string
+          verified?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          verification_code?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
+      matches: {
+        Row: {
+          away_odds: number | null
+          away_score: number | null
+          away_team: string | null
+          country: string | null
+          created_at: string
+          draw_odds: number | null
+          external_id: string | null
+          home_odds: number | null
+          home_score: number | null
+          home_team: string | null
+          id: string
+          league: string | null
+          match_date: string | null
+          sport: string | null
           start_time: string
           status: string
           title: string
         }
         Insert: {
+          away_odds?: number | null
+          away_score?: number | null
+          away_team?: string | null
+          country?: string | null
           created_at?: string
+          draw_odds?: number | null
+          external_id?: string | null
+          home_odds?: number | null
+          home_score?: number | null
+          home_team?: string | null
           id?: string
+          league?: string | null
+          match_date?: string | null
+          sport?: string | null
           start_time: string
           status: string
           title: string
         }
         Update: {
+          away_odds?: number | null
+          away_score?: number | null
+          away_team?: string | null
+          country?: string | null
           created_at?: string
+          draw_odds?: number | null
+          external_id?: string | null
+          home_odds?: number | null
+          home_score?: number | null
+          home_team?: string | null
           id?: string
+          league?: string | null
+          match_date?: string | null
+          sport?: string | null
           start_time?: string
           status?: string
           title?: string
@@ -68,6 +131,8 @@ export type Database = {
           auth_user_id: string
           balance: number
           created_at: string
+          email: string | null
+          email_verified: boolean | null
           id: string
           username: string
         }
@@ -75,6 +140,8 @@ export type Database = {
           auth_user_id?: string
           balance: number
           created_at?: string
+          email?: string | null
+          email_verified?: boolean | null
           id?: string
           username: string
         }
@@ -82,6 +149,8 @@ export type Database = {
           auth_user_id?: string
           balance?: number
           created_at?: string
+          email?: string | null
+          email_verified?: boolean | null
           id?: string
           username?: string
         }
