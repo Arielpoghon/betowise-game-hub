@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PayPalButton } from './PayPalButton';
+import { PesaPalButton } from './PesaPalButton';
 
 interface DepositDialogProps {
   open: boolean;
@@ -14,25 +14,28 @@ interface DepositDialogProps {
 
 export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) {
   const [amount, setAmount] = useState('');
-  const [showPayPal, setShowPayPal] = useState(false);
+  const [userPhone, setUserPhone] = useState('');
+  const [showPayment, setShowPayment] = useState(false);
 
   const handleAmountConfirm = () => {
     const depositAmount = parseFloat(amount);
-    if (depositAmount > 0) {
-      setShowPayPal(true);
+    if (depositAmount > 0 && userPhone.trim()) {
+      setShowPayment(true);
     }
   };
 
-  const handlePayPalSuccess = (paidAmount: number) => {
+  const handlePaymentSuccess = (paidAmount: number) => {
     onSuccess(paidAmount);
     setAmount('');
-    setShowPayPal(false);
+    setUserPhone('');
+    setShowPayment(false);
     onClose();
   };
 
   const handleClose = () => {
     setAmount('');
-    setShowPayPal(false);
+    setUserPhone('');
+    setShowPayment(false);
     onClose();
   };
 
@@ -40,22 +43,39 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Deposit Funds</DialogTitle>
+          <DialogTitle>Deposit Funds via M-Pesa</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {!showPayPal ? (
+          {!showPayment ? (
             <>
               <div>
-                <Label htmlFor="depositAmount">Amount to Deposit ($)</Label>
+                <Label htmlFor="depositAmount">Amount to Deposit (KES)</Label>
                 <Input
                   id="depositAmount"
                   type="number"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  step="0.01"
-                  min="1.00"
+                  step="1.00"
+                  min="10.00"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Minimum deposit: KES 10
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="userPhone">M-Pesa Phone Number</Label>
+                <Input
+                  id="userPhone"
+                  type="tel"
+                  placeholder="254712345678"
+                  value={userPhone}
+                  onChange={(e) => setUserPhone(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter your M-Pesa registered phone number
+                </p>
               </div>
               
               <div className="flex gap-2">
@@ -65,25 +85,29 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
                 <Button 
                   onClick={handleAmountConfirm} 
                   className="flex-1"
-                  disabled={!amount || parseFloat(amount) <= 0}
+                  disabled={!amount || parseFloat(amount) < 10 || !userPhone.trim()}
                 >
-                  Continue to PayPal
+                  Continue to M-Pesa
                 </Button>
               </div>
             </>
           ) : (
             <>
               <div className="text-center">
-                <p className="text-lg font-semibold">Deposit ${amount}</p>
-                <p className="text-sm text-muted-foreground">Complete payment with PayPal</p>
+                <p className="text-lg font-semibold">Deposit KES {amount}</p>
+                <p className="text-sm text-muted-foreground">Pay with M-Pesa: {userPhone}</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  You will be redirected to M-Pesa to complete the payment
+                </p>
               </div>
               
-              <PayPalButton 
+              <PesaPalButton 
                 amount={parseFloat(amount)} 
-                onSuccess={handlePayPalSuccess}
+                onSuccess={handlePaymentSuccess}
+                userPhone={userPhone}
               />
               
-              <Button variant="outline" onClick={() => setShowPayPal(false)} className="w-full">
+              <Button variant="outline" onClick={() => setShowPayment(false)} className="w-full">
                 Back
               </Button>
             </>
