@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AuthForm } from './AuthForm';
-import { useToast } from '@/hooks/use-toast';
 import { useRealTimeMatches } from '@/hooks/useRealTimeMatches';
 import { SportsHamburgerMenu } from './SportsHamburgerMenu';
 import { 
@@ -35,48 +34,24 @@ export function PublicLandingPage() {
     refreshMatches
   } = useRealTimeMatches();
 
-  const { toast } = useToast();
-
   const handleAuthClick = () => {
     setShowAuthForm(true);
-    toast({
-      title: "Welcome!",
-      description: "Please sign up or log in to start betting"
-    });
   };
 
   const handleSportSelect = (sport: string) => {
     changeSport(sport);
-    toast({
-      title: "Sport changed",
-      description: `Now showing ${sport === 'All' ? 'all' : sport} matches`
-    });
   };
 
   const handleSearch = () => {
     setShowSearch(!showSearch);
-    if (!showSearch) {
-      toast({
-        title: "Search activated",
-        description: "Start typing to search matches"
-      });
-    }
   };
 
   const handleOddsClick = (team: string, odds: string) => {
-    toast({
-      title: "Sign up required",
-      description: `Sign up to bet on ${team} at ${odds} odds`
-    });
     setShowAuthForm(true);
   };
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    toast({
-      title: "Tab changed",
-      description: `Viewing ${tab} matches`
-    });
   };
 
   const getDisplayMatches = () => {
@@ -153,10 +128,7 @@ export function PublicLandingPage() {
               >
                 Register
               </Button>
-              <Bell 
-                className="h-5 w-5 cursor-pointer hover:text-yellow-400 transition-colors animate-pulse" 
-                onClick={() => toast({ title: "Notifications", description: "Sign up to receive live match notifications" })}
-              />
+              <Bell className="h-5 w-5 cursor-pointer hover:text-yellow-400 transition-colors animate-pulse" />
               <Search 
                 className="h-5 w-5 cursor-pointer hover:text-yellow-400 transition-colors hover:scale-110" 
                 onClick={handleSearch}
@@ -172,7 +144,7 @@ export function PublicLandingPage() {
           <div className="max-w-7xl mx-auto">
             <input
               type="text"
-              placeholder="Search live matches..."
+              placeholder="Search matches..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all"
@@ -253,7 +225,7 @@ export function PublicLandingPage() {
                 disabled={loading}
               >
                 <Filter className="h-4 w-4 mr-2" />
-                {loading ? 'Updating...' : 'Refresh'}
+                {loading ? 'Loading...' : 'Refresh'}
               </Button>
             </div>
 
@@ -405,7 +377,7 @@ export function PublicLandingPage() {
                 </div>
                 
                 <div className="text-center py-8 text-gray-400">
-                  <p className="mb-4">Ready to start betting on live matches?</p>
+                  <p className="mb-4">Ready to start betting on matches?</p>
                   <Button 
                     className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold transition-all hover:scale-105 animate-pulse"
                     onClick={handleAuthClick}

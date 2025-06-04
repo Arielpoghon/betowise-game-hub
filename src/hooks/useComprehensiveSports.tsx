@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 interface Sport {
   name: string;
@@ -33,51 +32,11 @@ export function useComprehensiveSports() {
   const [sports, setSports] = useState<Sport[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSport, setSelectedSport] = useState('All');
-  const { toast } = useToast();
-
-  const fetchComprehensiveData = async () => {
-    try {
-      setLoading(true);
-      
-      toast({
-        title: "Fetching comprehensive sports data",
-        description: "This may take a moment as we fetch from TheSportsDB..."
-      });
-
-      // Trigger the comprehensive fetch function
-      const { error: fetchError } = await supabase.functions.invoke('fetch-comprehensive-sports');
-      
-      if (fetchError) {
-        console.error('Error fetching comprehensive data:', fetchError);
-        toast({
-          title: "Error fetching data",
-          description: fetchError.message || "Failed to fetch comprehensive sports data",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Data updated successfully",
-          description: "Comprehensive sports data has been fetched from TheSportsDB"
-        });
-      }
-
-      // Fetch updated matches from database
-      await loadMatches();
-
-    } catch (error: any) {
-      console.error('Error in comprehensive fetch:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch comprehensive data",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadMatches = async () => {
     try {
+      setLoading(true);
+      
       let query = supabase
         .from('matches')
         .select('*')
@@ -90,7 +49,8 @@ export function useComprehensiveSports() {
       const { data, error } = await query;
 
       if (error) {
-        throw error;
+        console.error('Error loading matches:', error);
+        return;
       }
 
       const formattedMatches = (data || []).map(match => ({
@@ -118,11 +78,9 @@ export function useComprehensiveSports() {
 
     } catch (error: any) {
       console.error('Error loading matches:', error);
-      toast({
-        title: "Error loading matches",
-        description: error.message || "Failed to load match data",
-        variant: "destructive"
-      });
+      // No more annoying error toasts
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -162,7 +120,7 @@ export function useComprehensiveSports() {
     loadMatches();
   }, [selectedSport]);
 
-  // Real-time subscription
+  // Real-time subscription - but no constant fetching
   useEffect(() => {
     const channel = supabase
       .channel('comprehensive-matches')
@@ -198,7 +156,6 @@ export function useComprehensiveSports() {
     loading,
     selectedSport,
     changeSport,
-    fetchComprehensiveData,
     refreshMatches: loadMatches
   };
 }

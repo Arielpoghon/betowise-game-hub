@@ -24,7 +24,7 @@ interface Match {
 
 export function useRealTimeMatches() {
   const [matches, setMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedSport, setSelectedSport] = useState('All');
   const { toast } = useToast();
 
@@ -32,14 +32,7 @@ export function useRealTimeMatches() {
     try {
       setLoading(true);
       
-      // First, trigger the fetch-matches function to get fresh data
-      const { error: fetchError } = await supabase.functions.invoke('fetch-matches');
-      
-      if (fetchError) {
-        console.error('Error fetching fresh matches:', fetchError);
-      }
-
-      // Then get matches from database
+      // Only get matches from database - no external API calls
       let query = supabase
         .from('matches')
         .select('*')
@@ -53,7 +46,8 @@ export function useRealTimeMatches() {
 
       if (error) {
         console.error('Database error:', error);
-        throw error;
+        // Don't show toast for database errors
+        return;
       }
 
       // Convert numeric odds to strings for consistency
@@ -67,11 +61,7 @@ export function useRealTimeMatches() {
       setMatches(formattedMatches);
     } catch (error: any) {
       console.error('Error fetching matches:', error);
-      toast({
-        title: "Error loading matches",
-        description: error.message || "Failed to load match data",
-        variant: "destructive"
-      });
+      // Silently handle errors - no more annoying popups
     } finally {
       setLoading(false);
     }
@@ -105,19 +95,12 @@ export function useRealTimeMatches() {
     };
   }, []);
 
-  // Fetch matches when component mounts or sport changes
+  // Fetch matches only when component mounts or sport changes
   useEffect(() => {
     fetchMatches();
   }, [selectedSport]);
 
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchMatches();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [selectedSport]);
+  // Remove auto-refresh - no more constant updates
 
   const liveMatches = matches.filter(match => match.status === 'live');
   const upcomingMatches = matches.filter(match => match.status === 'upcoming');
