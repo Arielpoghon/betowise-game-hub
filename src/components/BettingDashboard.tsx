@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -28,7 +27,7 @@ interface Match {
 }
 
 interface BetDialogData {
-  match: Match;
+  match: any; // Use the Match type from useRealTimeMatches
   market: { id: string; name: string; market_type: string };
   odds: { id: string; outcome: string; odds: number };
 }
@@ -71,7 +70,7 @@ export function BettingDashboard() {
     }
   }, [toast, fetchProfile]);
 
-  const handlePlaceBet = (match: Match, team: string, odds: number) => {
+  const handlePlaceBet = (match: any, team: string, odds: number) => {
     setBetDialogData({ 
       match, 
       market: { id: 'winner', name: 'Match Winner', market_type: 'winner' },
