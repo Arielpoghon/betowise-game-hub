@@ -10,24 +10,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useRealTimeMatches } from '@/hooks/useRealTimeMatches';
 
-interface Match {
-  id: string;
-  title: string;
-  home_team: string;
-  away_team: string;
-  home_odds: number;
-  away_odds: number;
-  draw_odds?: number;
-  start_time: string;
-  status: string;
-  sport: string;
-  league?: string;
-  country?: string;
-  created_at: string;
-}
+// Import the Match type from useRealTimeMatches instead of defining it here
+type Match = ReturnType<typeof useRealTimeMatches>['matches'][0];
 
 interface BetDialogData {
-  match: any; // Use the Match type from useRealTimeMatches
+  match: Match;
   market: { id: string; name: string; market_type: string };
   odds: { id: string; outcome: string; odds: number };
 }
@@ -70,7 +57,7 @@ export function BettingDashboard() {
     }
   }, [toast, fetchProfile]);
 
-  const handlePlaceBet = (match: any, team: string, odds: number) => {
+  const handlePlaceBet = (match: Match, team: string, odds: number) => {
     setBetDialogData({ 
       match, 
       market: { id: 'winner', name: 'Match Winner', market_type: 'winner' },
