@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -16,14 +15,18 @@ interface Match {
   title: string;
   home_team: string;
   away_team: string;
-  home_odds: number;
-  away_odds: number;
-  draw_odds?: number;
-  start_time: string;
-  status: string;
+  league: string;
+  country: string;
   sport: string;
-  league?: string;
-  country?: string;
+  status: string;
+  start_time: string;
+  match_date: string;
+  home_score: number | null;
+  away_score: number | null;
+  home_odds: string;
+  draw_odds: string | null;
+  away_odds: string;
+  external_id: string;
   created_at: string;
 }
 
@@ -72,14 +75,8 @@ export function BettingDashboard() {
   }, [toast, fetchProfile]);
 
   const handlePlaceBet = (match: Match, team: string, odds: number) => {
-    // Ensure the match object has all required properties including created_at
-    const completeMatch: Match = {
-      ...match,
-      created_at: match.created_at || new Date().toISOString()
-    };
-    
     setBetDialogData({ 
-      match: completeMatch, 
+      match, 
       market: { id: 'winner', name: 'Match Winner', market_type: 'winner' },
       odds: { id: 'team_odds', outcome: team, odds }
     });
