@@ -36,16 +36,31 @@ export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '
       return;
     }
 
+    if (!userPhone || userPhone.length < 10) {
+      toast({
+        title: "Invalid phone number",
+        description: "Please enter a valid M-Pesa phone number",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setLoading(true);
 
       console.log('Initiating PesaPal payment:', { amount, userEmail, userPhone });
 
+      // Show loading toast
+      toast({
+        title: "Processing payment",
+        description: "Please wait while we initialize your M-Pesa payment...",
+      });
+
       const { data, error } = await supabase.functions.invoke('pesapal-payment', {
         body: {
           amount: amount,
           email: userEmail || user.email,
-          phone_number: userPhone || '254700000000', // Default if not provided
+          phone_number: userPhone.startsWith('254') ? userPhone : `254${userPhone.replace(/^0+/, '')}`,
           description: `BetoWise deposit of KES ${amount}`,
           user_id: user.id
         }
@@ -69,6 +84,11 @@ export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '
         merchant_reference: data.merchant_reference
       }));
 
+      toast({
+        title: "Redirecting to M-Pesa",
+        description: "You will be redirected to complete your payment",
+      });
+
       // Redirect to PesaPal M-Pesa payment page
       window.location.href = data.redirect_url;
 
@@ -88,17 +108,17 @@ export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '
     <Button 
       onClick={handlePayment}
       disabled={loading || amount <= 0}
-      className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+      className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 sm:px-6 rounded-lg transition-colors text-sm sm:text-base"
     >
       {loading ? (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-center">
           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-          Processing...
+          <span className="text-xs sm:text-sm">Processing...</span>
         </div>
       ) : (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-center">
           <span>💳</span>
-          Pay KES {amount} with M-Pesa
+          <span className="text-xs sm:text-sm">Pay KES {amount} with M-Pesa</span>
         </div>
       )}
     </Button>

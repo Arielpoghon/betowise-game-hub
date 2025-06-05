@@ -57,17 +57,37 @@ Deno.serve(async (req) => {
       throw new Error(`PesaPal authentication failed: ${authData.message || 'Unknown error'}`)
     }
 
-    // Step 2: Generate unique merchant reference
+    // Step 2: Register IPN URL first (required by PesaPal)
+    const ipnUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/pesapal-callback`
+    const ipnResponse = await fetch('https://pay.pesapal.com/v3/api/URLSetup/RegisterIPN', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${authData.token}`
+      },
+      body: JSON.stringify({
+        url: ipnUrl,
+        ipn_notification_type: 'GET'
+      })
+    })
+
+    const ipnData = await ipnResponse.json()
+    console.log('IPN registration response:', ipnData)
+
+    const ipnId = ipnData.ipn_id || ipnData.id
+
+    // Step 3: Generate unique merchant reference
     const merchantReference = `BETOWISE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     
-    // Step 3: Submit order request
+    // Step 4: Submit order request
     const orderData = {
       id: merchantReference,
       currency: 'KES',
       amount: parseFloat(amount),
       description: description || 'BetoWise Deposit',
-      callback_url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/pesapal-callback`,
-      notification_id: merchantReference,
+      callback_url: ipnUrl,
+      notification_id: ipnId,
       billing_address: {
         email_address: email,
         phone_number: phone_number,
@@ -96,7 +116,7 @@ Deno.serve(async (req) => {
       throw new Error(`Order submission failed: ${orderResult.message || 'Unknown error'}`)
     }
 
-    // Step 4: Store payment record in database
+    // Step 5: Store payment record in database
     const { error: dbError } = await supabase
       .from('payments')
       .insert({
