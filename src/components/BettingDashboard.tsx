@@ -3,11 +3,10 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
-import { ComprehensiveSportsMenu } from './ComprehensiveSportsMenu';
+import { SportsHamburgerMenu } from './SportsHamburgerMenu';
 import { MatchCard } from './MatchCard';
 import { BetDialog } from './BetDialog';
 import { DepositDialog } from './DepositDialog';
-import { SportsHamburgerMenu } from './SportsHamburgerMenu';
 import { FooterDescription } from './FooterDescription';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +25,7 @@ interface Match {
   sport: string;
   league?: string;
   country?: string;
+  created_at: string;
 }
 
 interface BetDialogData {
@@ -42,7 +42,7 @@ export function BettingDashboard() {
   const [betDialogData, setBetDialogData] = useState<BetDialogData | null>(null);
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   
-  const { matches, loading: matchesLoading } = useRealTimeMatches(selectedSport);
+  const { matches, loading: matchesLoading } = useRealTimeMatches();
 
   useEffect(() => {
     // Check for payment success/failure in URL params
@@ -120,12 +120,6 @@ export function BettingDashboard() {
               <h1 className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
                 BetoWise
               </h1>
-              <div className="hidden md:block">
-                <ComprehensiveSportsMenu 
-                  selectedSport={selectedSport} 
-                  onSportSelect={setSelectedSport} 
-                />
-              </div>
               <div className="md:hidden">
                 <SportsHamburgerMenu 
                   selectedSport={selectedSport} 
@@ -193,14 +187,14 @@ export function BettingDashboard() {
                 <MatchCard
                   key={match.id}
                   match={match}
-                  onPlaceBet={handlePlaceBet}
+                  onBet={handlePlaceBet}
                 />
               ))}
             </div>
           ) : (
             <div className="text-center py-12">
               <p className="text-gray-500 dark:text-gray-400">
-                No matches available for {selectedSport} at the moment.
+                No matches available at the moment.
               </p>
             </div>
           )}
