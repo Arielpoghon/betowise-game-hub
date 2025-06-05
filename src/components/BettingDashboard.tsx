@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
-import { SportsHamburgerMenu } from './SportsHamburgerMenu';
 import { MatchCard } from './MatchCard';
 import { BetDialog } from './BetDialog';
 import { DepositDialog } from './DepositDialog';
@@ -30,15 +29,14 @@ interface Match {
 
 interface BetDialogData {
   match: Match;
-  team: string;
-  odds: number;
+  market: { id: string; name: string; market_type: string };
+  odds: { id: string; outcome: string; odds: number };
 }
 
 export function BettingDashboard() {
   const { user, signOut } = useAuth();
   const { profile, loading, fetchProfile, updateBalance } = useUserProfile();
   const { toast } = useToast();
-  const [selectedSport, setSelectedSport] = useState<string>('football');
   const [betDialogData, setBetDialogData] = useState<BetDialogData | null>(null);
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   
@@ -74,7 +72,11 @@ export function BettingDashboard() {
   }, [toast, fetchProfile]);
 
   const handlePlaceBet = (match: Match, team: string, odds: number) => {
-    setBetDialogData({ match, team, odds });
+    setBetDialogData({ 
+      match, 
+      market: { id: 'winner', name: 'Match Winner', market_type: 'winner' },
+      odds: { id: 'team_odds', outcome: team, odds }
+    });
   };
 
   const handleBetSuccess = async (betAmount: number) => {
@@ -120,12 +122,6 @@ export function BettingDashboard() {
               <h1 className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
                 BetoWise
               </h1>
-              <div className="md:hidden">
-                <SportsHamburgerMenu 
-                  selectedSport={selectedSport} 
-                  onSportSelect={setSelectedSport} 
-                />
-              </div>
             </div>
             
             <div className="flex items-center space-x-2 sm:space-x-4">
@@ -210,10 +206,10 @@ export function BettingDashboard() {
           open={!!betDialogData}
           onClose={() => setBetDialogData(null)}
           match={betDialogData.match}
-          team={betDialogData.team}
+          market={betDialogData.market}
           odds={betDialogData.odds}
           userBalance={profile?.balance || 0}
-          onBetSuccess={handleBetSuccess}
+          onConfirm={handleBetSuccess}
         />
       )}
 
