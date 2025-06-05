@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,10 +16,51 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
   const [amount, setAmount] = useState('');
   const [userPhone, setUserPhone] = useState('');
   const [showPayment, setShowPayment] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [isPromoActive, setIsPromoActive] = useState(false);
+
+  // Promo end date - 7 days from app launch (you can adjust this date)
+  const promoEndDate = new Date('2025-06-12T23:59:59'); // 7 days from now
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const now = new Date().getTime();
+      const promoEnd = promoEndDate.getTime();
+      const difference = promoEnd - now;
+
+      if (difference > 0) {
+        setTimeLeft(difference);
+        setIsPromoActive(true);
+      } else {
+        setTimeLeft(0);
+        setIsPromoActive(false);
+      }
+    };
+
+    calculateTimeLeft();
+    const timer = setInterval(calculateTimeLeft, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTimeLeft = (milliseconds: number) => {
+    const days = Math.floor(milliseconds / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((milliseconds % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((milliseconds % (1000 * 60)) / 1000);
+
+    return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+  };
+
+  const getMinimumDeposit = () => {
+    return isPromoActive ? 450 : 1100;
+  };
 
   const handleAmountConfirm = () => {
     const depositAmount = parseFloat(amount);
-    if (depositAmount > 0 && userPhone.trim()) {
+    const minDeposit = getMinimumDeposit();
+    
+    if (depositAmount >= minDeposit && userPhone.trim()) {
       setShowPayment(true);
     }
   };
@@ -53,6 +94,9 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
     }
   };
 
+  const minDeposit = getMinimumDeposit();
+  const depositAmount = parseFloat(amount);
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md w-[95vw] max-h-[90vh] overflow-y-auto">
@@ -60,6 +104,36 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
           <DialogTitle className="text-base sm:text-lg">Deposit Funds</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 p-1">
+          {/* Promo Countdown */}
+          {isPromoActive && (
+            <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-green-700 dark:text-green-300">
+                  🎉 PROMO PRICE ACTIVE!
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  Minimum deposit: KES 450 (Regular: KES 1,100)
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-400 font-mono">
+                  Time left: {formatTimeLeft(timeLeft)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!isPromoActive && (
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <div className="text-center">
+                <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                  Standard Pricing
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  Minimum deposit: KES 1,100
+                </p>
+              </div>
+            </div>
+          )}
+
           {!showPayment ? (
             <>
               <div>
@@ -67,16 +141,23 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
                 <Input
                   id="depositAmount"
                   type="number"
-                  placeholder="Enter amount (min. 10)"
+                  placeholder={`Enter amount (min. ${minDeposit})`}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   step="1.00"
-                  min="10.00"
+                  min={minDeposit.toString()}
                   className="mt-1 text-base"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Minimum deposit: 10 (currency will be detected automatically)
-                </p>
+                <div className="flex justify-between items-center mt-1">
+                  <p className="text-xs text-muted-foreground">
+                    Minimum deposit: KES {minDeposit}
+                  </p>
+                  {depositAmount > 0 && depositAmount < minDeposit && (
+                    <p className="text-xs text-red-500">
+                      Amount too low (min: {minDeposit})
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -101,7 +182,7 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
                 <Button 
                   onClick={handleAmountConfirm} 
                   className="flex-1 text-sm"
-                  disabled={!amount || parseFloat(amount) < 10 || !userPhone.trim() || userPhone.length < 9}
+                  disabled={!amount || depositAmount < minDeposit || !userPhone.trim() || userPhone.length < 9}
                 >
                   Continue to Payment
                 </Button>
@@ -110,7 +191,7 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
           ) : (
             <>
               <div className="text-center space-y-2">
-                <p className="text-lg font-semibold">Deposit {amount}</p>
+                <p className="text-lg font-semibold">Deposit KES {amount}</p>
                 <p className="text-sm text-muted-foreground">Pay with Mobile Money: {userPhone}</p>
                 <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
                   <p className="text-xs text-blue-600 dark:text-blue-400">

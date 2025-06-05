@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -5,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MatchCard } from './MatchCard';
 import { BetDialog } from './BetDialog';
 import { DepositDialog } from './DepositDialog';
+import { WithdrawalDialog } from './WithdrawalDialog';
 import { FooterDescription } from './FooterDescription';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,6 +27,7 @@ export function BettingDashboard() {
   const { toast } = useToast();
   const [betDialogData, setBetDialogData] = useState<BetDialogData | null>(null);
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
+  const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
   
   const { matches, loading: matchesLoading } = useRealTimeMatches();
 
@@ -87,6 +90,17 @@ export function BettingDashboard() {
     }, 2000);
   };
 
+  const handleWithdrawalSuccess = async (withdrawalAmount: number) => {
+    if (profile) {
+      const newBalance = profile.balance - withdrawalAmount;
+      await updateBalance(newBalance);
+      toast({
+        title: "Withdrawal processed!",
+        description: `KES ${withdrawalAmount} has been deducted from your account.`,
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -131,6 +145,15 @@ export function BettingDashboard() {
                 className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 text-xs sm:text-sm"
               >
                 + Deposit
+              </Button>
+
+              <Button 
+                onClick={() => setWithdrawalDialogOpen(true)}
+                variant="outline"
+                className="border-red-300 text-red-600 hover:bg-red-50 px-3 py-2 text-xs sm:text-sm"
+                disabled={!profile || profile.balance < 100}
+              >
+                Withdraw
               </Button>
               
               <Button 
@@ -203,6 +226,13 @@ export function BettingDashboard() {
         open={depositDialogOpen}
         onClose={() => setDepositDialogOpen(false)}
         onSuccess={handleDepositSuccess}
+      />
+
+      <WithdrawalDialog
+        open={withdrawalDialogOpen}
+        onClose={() => setWithdrawalDialogOpen(false)}
+        userBalance={profile?.balance || 0}
+        onSuccess={handleWithdrawalSuccess}
       />
     </div>
   );
