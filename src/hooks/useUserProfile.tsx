@@ -19,6 +19,30 @@ export function useUserProfile() {
   useEffect(() => {
     if (user) {
       fetchProfile();
+      
+      // Set up real-time subscription for balance updates
+      const channel = supabase
+        .channel('user-balance-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'users',
+            filter: `auth_user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Balance updated:', payload);
+            if (payload.new) {
+              setProfile(prev => prev ? { ...prev, balance: payload.new.balance } : null);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     } else {
       setProfile(null);
       setLoading(false);

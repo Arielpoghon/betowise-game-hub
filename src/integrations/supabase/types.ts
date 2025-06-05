@@ -126,6 +126,54 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          description: string | null
+          email: string | null
+          id: string
+          merchant_reference: string
+          order_tracking_id: string | null
+          payment_method: string
+          phone_number: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          email?: string | null
+          id?: string
+          merchant_reference: string
+          order_tracking_id?: string | null
+          payment_method?: string
+          phone_number?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          email?: string | null
+          id?: string
+          merchant_reference?: string
+          order_tracking_id?: string | null
+          payment_method?: string
+          phone_number?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           auth_user_id: string
@@ -161,7 +209,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_user_balance: {
+        Args: { user_id: string; amount_to_add: number }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

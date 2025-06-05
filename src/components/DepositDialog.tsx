@@ -57,13 +57,13 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-base sm:text-lg">Deposit Funds via M-Pesa</DialogTitle>
+          <DialogTitle className="text-base sm:text-lg">Deposit Funds</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 p-1">
           {!showPayment ? (
             <>
               <div>
-                <Label htmlFor="depositAmount" className="text-sm">Amount to Deposit (KES)</Label>
+                <Label htmlFor="depositAmount" className="text-sm">Amount to Deposit</Label>
                 <Input
                   id="depositAmount"
                   type="number"
@@ -75,12 +75,12 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
                   className="mt-1 text-base"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Minimum deposit: KES 10
+                  Minimum deposit: 10 (currency will be detected automatically)
                 </p>
               </div>
 
               <div>
-                <Label htmlFor="userPhone" className="text-sm">M-Pesa Phone Number</Label>
+                <Label htmlFor="userPhone" className="text-sm">Mobile Money Phone Number</Label>
                 <Input
                   id="userPhone"
                   type="tel"
@@ -90,7 +90,7 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
                   className="mt-1 text-base"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Enter your M-Pesa registered phone number
+                  Enter your mobile money registered phone number
                 </p>
               </div>
               
@@ -103,18 +103,18 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
                   className="flex-1 text-sm"
                   disabled={!amount || parseFloat(amount) < 10 || !userPhone.trim() || userPhone.length < 9}
                 >
-                  Continue to M-Pesa
+                  Continue to Payment
                 </Button>
               </div>
             </>
           ) : (
             <>
               <div className="text-center space-y-2">
-                <p className="text-lg font-semibold">Deposit KES {amount}</p>
-                <p className="text-sm text-muted-foreground">Pay with M-Pesa: {userPhone}</p>
+                <p className="text-lg font-semibold">Deposit {amount}</p>
+                <p className="text-sm text-muted-foreground">Pay with Mobile Money: {userPhone}</p>
                 <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
                   <p className="text-xs text-blue-600 dark:text-blue-400">
-                    ✓ You will be redirected to M-Pesa to complete the payment<br/>
+                    ✓ You will be redirected to complete the payment securely<br/>
                     ✓ Follow the prompts on your phone to authorize the payment<br/>
                     ✓ Your account will be credited automatically upon successful payment
                   </p>

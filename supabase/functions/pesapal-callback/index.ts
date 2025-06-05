@@ -73,11 +73,13 @@ Deno.serve(async (req) => {
       return new Response('Payment record not found', { status: 404, headers: corsHeaders })
     }
 
+    const paymentStatus = statusData.payment_status_description?.toLowerCase() || 'unknown'
+    
     // Update payment status
     const { error: updateError } = await supabase
       .from('payments')
       .update({
-        status: statusData.payment_status_description?.toLowerCase() || 'unknown',
+        status: paymentStatus,
         updated_at: new Date().toISOString()
       })
       .eq('order_tracking_id', orderTrackingId)
@@ -88,6 +90,11 @@ Deno.serve(async (req) => {
 
     // If payment is successful, update user balance
     if (statusData.payment_status_description === 'Completed') {
+      console.log('Payment completed, updating user balance:', {
+        user_id: payment.user_id,
+        amount: payment.amount
+      })
+
       const { error: balanceError } = await supabase.rpc('update_user_balance', {
         user_id: payment.user_id,
         amount_to_add: payment.amount
@@ -95,13 +102,21 @@ Deno.serve(async (req) => {
 
       if (balanceError) {
         console.error('Failed to update user balance:', balanceError)
+      } else {
+        console.log('User balance updated successfully')
       }
     }
 
-    // Redirect to success/failure page
+    // Determine redirect URL based on environment
+    const baseUrl = Deno.env.get('SUPABASE_URL')?.includes('localhost') 
+      ? 'http://localhost:5173'
+      : 'https://cvwtikkltashkvreqhfb.lovable.app'
+    
     const redirectUrl = statusData.payment_status_description === 'Completed' 
-      ? `${Deno.env.get('SUPABASE_URL')?.replace('//', '//').split('.')[0]}.lovable.app/?payment=success`
-      : `${Deno.env.get('SUPABASE_URL')?.replace('//', '//').split('.')[0]}.lovable.app/?payment=failed`
+      ? `${baseUrl}/?payment=success&amount=${payment.amount}&currency=${payment.currency}`
+      : `${baseUrl}/?payment=failed`
+
+    console.log('Redirecting to:', redirectUrl)
 
     return new Response(null, {
       status: 302,
