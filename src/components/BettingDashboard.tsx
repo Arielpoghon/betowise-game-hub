@@ -72,8 +72,14 @@ export function BettingDashboard() {
   }, [toast, fetchProfile]);
 
   const handlePlaceBet = (match: Match, team: string, odds: number) => {
+    // Ensure the match object has all required properties including created_at
+    const completeMatch: Match = {
+      ...match,
+      created_at: match.created_at || new Date().toISOString()
+    };
+    
     setBetDialogData({ 
-      match, 
+      match: completeMatch, 
       market: { id: 'winner', name: 'Match Winner', market_type: 'winner' },
       odds: { id: 'team_odds', outcome: team, odds }
     });
