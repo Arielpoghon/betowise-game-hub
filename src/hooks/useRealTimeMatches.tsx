@@ -14,12 +14,29 @@ interface Match {
   status: string;
   start_time: string;
   match_date: string;
+  match_time: string | null;
   home_score: number | null;
   away_score: number | null;
   home_odds: string;
   draw_odds: string | null;
   away_odds: string;
   external_id: string;
+  venue: string | null;
+  season: string | null;
+  round_info: string | null;
+  home_team_logo: string | null;
+  away_team_logo: string | null;
+  referee: string | null;
+  weather_conditions: string | null;
+  attendance: number | null;
+  match_notes: string | null;
+  over_under_odds: number | null;
+  asian_handicap_odds: number | null;
+  both_teams_score_odds: number | null;
+  correct_score_odds: any | null;
+  first_half_result_odds: any | null;
+  total_goals_odds: any | null;
+  updated_at: string | null;
 }
 
 export function useRealTimeMatches() {

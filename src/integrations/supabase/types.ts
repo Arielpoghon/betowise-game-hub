@@ -68,61 +68,112 @@ export type Database = {
       }
       matches: {
         Row: {
+          asian_handicap_odds: number | null
+          attendance: number | null
           away_odds: number | null
           away_score: number | null
           away_team: string | null
+          away_team_logo: string | null
+          both_teams_score_odds: number | null
+          correct_score_odds: Json | null
           country: string | null
           created_at: string
           draw_odds: number | null
           external_id: string | null
+          first_half_result_odds: Json | null
           home_odds: number | null
           home_score: number | null
           home_team: string | null
+          home_team_logo: string | null
           id: string
           league: string | null
           match_date: string | null
+          match_notes: string | null
+          match_time: string | null
+          over_under_odds: number | null
+          referee: string | null
+          round_info: string | null
+          season: string | null
           sport: string | null
           start_time: string
           status: string
           title: string
+          total_goals_odds: Json | null
+          updated_at: string | null
+          venue: string | null
+          weather_conditions: string | null
         }
         Insert: {
+          asian_handicap_odds?: number | null
+          attendance?: number | null
           away_odds?: number | null
           away_score?: number | null
           away_team?: string | null
+          away_team_logo?: string | null
+          both_teams_score_odds?: number | null
+          correct_score_odds?: Json | null
           country?: string | null
           created_at?: string
           draw_odds?: number | null
           external_id?: string | null
+          first_half_result_odds?: Json | null
           home_odds?: number | null
           home_score?: number | null
           home_team?: string | null
+          home_team_logo?: string | null
           id?: string
           league?: string | null
           match_date?: string | null
+          match_notes?: string | null
+          match_time?: string | null
+          over_under_odds?: number | null
+          referee?: string | null
+          round_info?: string | null
+          season?: string | null
           sport?: string | null
           start_time: string
           status: string
           title: string
+          total_goals_odds?: Json | null
+          updated_at?: string | null
+          venue?: string | null
+          weather_conditions?: string | null
         }
         Update: {
+          asian_handicap_odds?: number | null
+          attendance?: number | null
           away_odds?: number | null
           away_score?: number | null
           away_team?: string | null
+          away_team_logo?: string | null
+          both_teams_score_odds?: number | null
+          correct_score_odds?: Json | null
           country?: string | null
           created_at?: string
           draw_odds?: number | null
           external_id?: string | null
+          first_half_result_odds?: Json | null
           home_odds?: number | null
           home_score?: number | null
           home_team?: string | null
+          home_team_logo?: string | null
           id?: string
           league?: string | null
           match_date?: string | null
+          match_notes?: string | null
+          match_time?: string | null
+          over_under_odds?: number | null
+          referee?: string | null
+          round_info?: string | null
+          season?: string | null
           sport?: string | null
           start_time?: string
           status?: string
           title?: string
+          total_goals_odds?: Json | null
+          updated_at?: string | null
+          venue?: string | null
+          weather_conditions?: string | null
         }
         Relationships: []
       }
@@ -171,6 +222,42 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      sports_leagues: {
+        Row: {
+          active: boolean | null
+          country: string
+          created_at: string | null
+          id: string
+          league_level: number | null
+          league_name: string
+          season: string | null
+          sport_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          country: string
+          created_at?: string | null
+          id?: string
+          league_level?: number | null
+          league_name: string
+          season?: string | null
+          sport_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          country?: string
+          created_at?: string | null
+          id?: string
+          league_level?: number | null
+          league_name?: string
+          season?: string | null
+          sport_name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

@@ -122,6 +122,13 @@ export function BettingDashboard() {
     }
   };
 
+  const handleComingSoon = (feature: string) => {
+    toast({
+      title: "Coming Soon!",
+      description: `${feature} will be available soon. Stay tuned!`,
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -188,6 +195,41 @@ export function BettingDashboard() {
           </div>
         </div>
       </header>
+
+      {/* Navigation Menu */}
+      <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-8 overflow-x-auto py-4">
+            <button className="whitespace-nowrap text-blue-600 dark:text-blue-400 font-medium border-b-2 border-blue-600 dark:border-blue-400 pb-2">
+              Sports
+            </button>
+            <button 
+              onClick={() => handleComingSoon('Jackpot')}
+              className="whitespace-nowrap text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 pb-2"
+            >
+              Jackpot
+            </button>
+            <button 
+              onClick={() => handleComingSoon('Aviator')}
+              className="whitespace-nowrap text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 pb-2"
+            >
+              Aviator
+            </button>
+            <button 
+              onClick={() => handleComingSoon('Casino')}
+              className="whitespace-nowrap text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 pb-2"
+            >
+              Casino
+            </button>
+            <button 
+              onClick={() => handleComingSoon('Virtual')}
+              className="whitespace-nowrap text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 pb-2"
+            >
+              Virtual
+            </button>
+          </div>
+        </div>
+      </nav>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
