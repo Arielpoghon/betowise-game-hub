@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useRealTimeMatches } from '@/hooks/useRealTimeMatches';
 
-// Import the Match type from useRealTimeMatches instead of defining it here
+// Use the Match type from useRealTimeMatches
 type Match = ReturnType<typeof useRealTimeMatches>['matches'][0];
 
 interface BetDialogData {

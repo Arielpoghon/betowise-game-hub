@@ -5,12 +5,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+// Use the actual Match type structure from the database
 interface Match {
   id: string;
   title: string;
-  start_time: string;
+  home_team: string;
+  away_team: string;
+  league: string;
+  country: string;
+  sport: string;
   status: string;
-  created_at: string;
+  start_time: string;
+  match_date: string;
+  home_score: number | null;
+  away_score: number | null;
+  home_odds: string;
+  draw_odds: string | null;
+  away_odds: string;
+  external_id: string;
 }
 
 interface Market {
@@ -69,7 +81,7 @@ export function BetDialog({
           </div>
           
           <div>
-            <Label htmlFor="amount">Bet Amount ($)</Label>
+            <Label htmlFor="amount">Bet Amount (KES)</Label>
             <Input
               id="amount"
               type="number"
@@ -81,7 +93,7 @@ export function BetDialog({
               max={userBalance}
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Available balance: ${userBalance.toFixed(2)}
+              Available balance: KES {userBalance.toFixed(2)}
             </p>
           </div>
           
@@ -89,13 +101,13 @@ export function BetDialog({
             <div className="flex justify-between text-sm">
               <span>Potential Win:</span>
               <span className="font-medium text-green-600">
-                ${potentialWin.toFixed(2)}
+                KES {potentialWin.toFixed(2)}
               </span>
             </div>
             <div className="flex justify-between text-sm mt-1">
               <span>Total Return:</span>
               <span className="font-medium">
-                ${(potentialWin + parseFloat(amount || '0')).toFixed(2)}
+                KES {(potentialWin + parseFloat(amount || '0')).toFixed(2)}
               </span>
             </div>
           </div>
