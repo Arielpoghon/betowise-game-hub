@@ -26,7 +26,7 @@ export function WithdrawalDialog({ open, onClose, userBalance, onSuccess }: With
   const commissionRate = 0.07; // 7%
   const commission = withdrawalAmount * commissionRate;
   const netAmount = withdrawalAmount - commission;
-  const minWithdrawal = 100; // Minimum withdrawal amount
+  const minWithdrawal = 2000; // Updated minimum withdrawal amount
 
   const handleWithdrawal = async () => {
     if (!user) {
@@ -76,7 +76,6 @@ export function WithdrawalDialog({ open, onClose, userBalance, onSuccess }: With
         userId: user.id
       });
 
-      // Call the withdrawal edge function
       const { data, error } = await supabase.functions.invoke('process-withdrawal', {
         body: {
           amount: withdrawalAmount,

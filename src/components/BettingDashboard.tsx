@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -61,6 +60,16 @@ export function BettingDashboard() {
   }, [toast, fetchProfile]);
 
   const handlePlaceBet = (match: Match, team: string, odds: number) => {
+    // Check if user has minimum balance to place bets
+    if (!profile || profile.balance < 50) {
+      toast({
+        title: "Insufficient funds",
+        description: "You need at least KES 50 to place a bet. Please deposit funds first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setBetDialogData({ 
       match, 
       market: { id: 'winner', name: 'Match Winner', market_type: 'winner' },
@@ -151,7 +160,7 @@ export function BettingDashboard() {
                 onClick={() => setWithdrawalDialogOpen(true)}
                 variant="outline"
                 className="border-red-300 text-red-600 hover:bg-red-50 px-3 py-2 text-xs sm:text-sm"
-                disabled={!profile || profile.balance < 100}
+                disabled={!profile || profile.balance < 2000}
               >
                 Withdraw
               </Button>
@@ -177,6 +186,15 @@ export function BettingDashboard() {
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             Choose your sport and place your bets on live matches
           </p>
+          
+          {/* Betting Requirements Notice */}
+          {profile && profile.balance < 50 && (
+            <div className="mt-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                💡 You need at least KES 50 in your account to place bets. Please deposit funds to start betting.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Matches Grid */}
@@ -193,6 +211,7 @@ export function BettingDashboard() {
                   key={match.id}
                   match={match}
                   onBet={handlePlaceBet}
+                  disabled={!profile || profile.balance < 50}
                 />
               ))}
             </div>

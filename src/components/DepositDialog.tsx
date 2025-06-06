@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PesaPalButton } from './PesaPalButton';
+import { PayPalButton } from './PayPalButton';
 
 interface DepositDialogProps {
   open: boolean;
@@ -16,11 +17,12 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
   const [amount, setAmount] = useState('');
   const [userPhone, setUserPhone] = useState('');
   const [showPayment, setShowPayment] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'paypal'>('mpesa');
   const [timeLeft, setTimeLeft] = useState(0);
   const [isPromoActive, setIsPromoActive] = useState(false);
 
-  // Promo end date - 7 days from app launch (you can adjust this date)
-  const promoEndDate = new Date('2025-06-12T23:59:59'); // 7 days from now
+  // Promo end date - 7 days from app launch
+  const promoEndDate = new Date('2025-06-12T23:59:59');
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -53,14 +55,14 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
   };
 
   const getMinimumDeposit = () => {
-    return isPromoActive ? 450 : 1100;
+    return isPromoActive ? 499 : 1100;
   };
 
   const handleAmountConfirm = () => {
     const depositAmount = parseFloat(amount);
     const minDeposit = getMinimumDeposit();
     
-    if (depositAmount >= minDeposit && userPhone.trim()) {
+    if (depositAmount >= minDeposit && (paymentMethod === 'paypal' || userPhone.trim())) {
       setShowPayment(true);
     }
   };
@@ -81,10 +83,8 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
   };
 
   const formatPhoneNumber = (value: string) => {
-    // Remove non-digits
     const digits = value.replace(/\D/g, '');
     
-    // Format based on length
     if (digits.startsWith('254')) {
       return digits.slice(0, 12);
     } else if (digits.startsWith('0')) {
@@ -112,7 +112,7 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
                   🎉 PROMO PRICE ACTIVE!
                 </p>
                 <p className="text-xs text-green-600 dark:text-green-400">
-                  Minimum deposit: KES 450 (Regular: KES 1,100)
+                  Minimum deposit: KES 499 (Regular: KES 1,100)
                 </p>
                 <p className="text-xs text-green-600 dark:text-green-400 font-mono">
                   Time left: {formatTimeLeft(timeLeft)}
@@ -161,19 +161,41 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
               </div>
 
               <div>
-                <Label htmlFor="userPhone" className="text-sm">Mobile Money Phone Number</Label>
-                <Input
-                  id="userPhone"
-                  type="tel"
-                  placeholder="0712345678 or 254712345678"
-                  value={userPhone}
-                  onChange={(e) => setUserPhone(formatPhoneNumber(e.target.value))}
-                  className="mt-1 text-base"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enter your mobile money registered phone number
-                </p>
+                <Label className="text-sm">Payment Method</Label>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <Button
+                    variant={paymentMethod === 'mpesa' ? 'default' : 'outline'}
+                    onClick={() => setPaymentMethod('mpesa')}
+                    className="text-sm"
+                  >
+                    M-Pesa
+                  </Button>
+                  <Button
+                    variant={paymentMethod === 'paypal' ? 'default' : 'outline'}
+                    onClick={() => setPaymentMethod('paypal')}
+                    className="text-sm"
+                  >
+                    PayPal
+                  </Button>
+                </div>
               </div>
+
+              {paymentMethod === 'mpesa' && (
+                <div>
+                  <Label htmlFor="userPhone" className="text-sm">Mobile Money Phone Number</Label>
+                  <Input
+                    id="userPhone"
+                    type="tel"
+                    placeholder="0712345678 or 254712345678"
+                    value={userPhone}
+                    onChange={(e) => setUserPhone(formatPhoneNumber(e.target.value))}
+                    className="mt-1 text-base"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter your mobile money registered phone number
+                  </p>
+                </div>
+              )}
               
               <div className="flex flex-col sm:flex-row gap-2 pt-2">
                 <Button variant="outline" onClick={handleClose} className="flex-1 text-sm">
@@ -182,7 +204,11 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
                 <Button 
                   onClick={handleAmountConfirm} 
                   className="flex-1 text-sm"
-                  disabled={!amount || depositAmount < minDeposit || !userPhone.trim() || userPhone.length < 9}
+                  disabled={
+                    !amount || 
+                    depositAmount < minDeposit || 
+                    (paymentMethod === 'mpesa' && (!userPhone.trim() || userPhone.length < 9))
+                  }
                 >
                   Continue to Payment
                 </Button>
@@ -192,21 +218,30 @@ export function DepositDialog({ open, onClose, onSuccess }: DepositDialogProps) 
             <>
               <div className="text-center space-y-2">
                 <p className="text-lg font-semibold">Deposit KES {amount}</p>
-                <p className="text-sm text-muted-foreground">Pay with Mobile Money: {userPhone}</p>
+                <p className="text-sm text-muted-foreground">
+                  Pay with {paymentMethod === 'mpesa' ? `M-Pesa: ${userPhone}` : 'PayPal'}
+                </p>
                 <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
                   <p className="text-xs text-blue-600 dark:text-blue-400">
                     ✓ You will be redirected to complete the payment securely<br/>
-                    ✓ Follow the prompts on your phone to authorize the payment<br/>
+                    ✓ Follow the prompts to authorize the payment<br/>
                     ✓ Your account will be credited automatically upon successful payment
                   </p>
                 </div>
               </div>
               
-              <PesaPalButton 
-                amount={parseFloat(amount)} 
-                onSuccess={handlePaymentSuccess}
-                userPhone={userPhone}
-              />
+              {paymentMethod === 'mpesa' ? (
+                <PesaPalButton 
+                  amount={parseFloat(amount)} 
+                  onSuccess={handlePaymentSuccess}
+                  userPhone={userPhone}
+                />
+              ) : (
+                <PayPalButton 
+                  amount={parseFloat(amount)} 
+                  onSuccess={handlePaymentSuccess}
+                />
+              )}
               
               <Button variant="outline" onClick={() => setShowPayment(false)} className="w-full text-sm">
                 ← Back to Edit Details
