@@ -15,6 +15,7 @@ interface PesaPalButtonProps {
 export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '' }: PesaPalButtonProps) {
   const [loading, setLoading] = useState(false);
   const [currency, setCurrency] = useState('KES');
+  const [convertedAmount, setConvertedAmount] = useState(amount);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -22,6 +23,16 @@ export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '
     // Detect user's currency based on location
     detectCurrency();
   }, []);
+
+  useEffect(() => {
+    // Convert amount based on currency
+    if (currency === 'XAF') {
+      // Convert KES to XAF (approximate rate: 1 KES = 4.5 XAF)
+      setConvertedAmount(Math.round(amount * 4.5));
+    } else {
+      setConvertedAmount(amount);
+    }
+  }, [amount, currency]);
 
   const detectCurrency = async () => {
     try {
@@ -57,7 +68,7 @@ export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '
       return;
     }
 
-    if (amount <= 0) {
+    if (convertedAmount <= 0) {
       toast({
         title: "Invalid amount",
         description: "Please enter a valid amount",
@@ -69,7 +80,7 @@ export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '
     if (!userPhone || userPhone.length < 10) {
       toast({
         title: "Invalid phone number",
-        description: "Please enter a valid M-Pesa phone number",
+        description: `Please enter a valid ${currency === 'XAF' ? 'Mobile Money' : 'M-Pesa'} phone number`,
         variant: "destructive"
       });
       return;
@@ -78,7 +89,7 @@ export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '
     try {
       setLoading(true);
 
-      console.log('Initiating PesaPal payment:', { amount, currency, userEmail, userPhone });
+      console.log('Initiating PesaPal payment:', { amount: convertedAmount, currency, userEmail, userPhone });
 
       // Show loading toast
       toast({
@@ -88,12 +99,14 @@ export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '
 
       const { data, error } = await supabase.functions.invoke('pesapal-payment', {
         body: {
-          amount: amount,
+          amount: convertedAmount,
           currency: currency,
           email: userEmail || user.email,
-          phone_number: userPhone.startsWith('254') ? userPhone : `254${userPhone.replace(/^0+/, '')}`,
-          description: `BetoWise deposit of ${currency} ${amount}`,
-          user_id: user.id
+          phone_number: userPhone.startsWith('254') || userPhone.startsWith('237') ? userPhone : 
+                       currency === 'XAF' ? `237${userPhone.replace(/^0+/, '')}` : `254${userPhone.replace(/^0+/, '')}`,
+          description: `BetoWise deposit of ${currency} ${convertedAmount}`,
+          user_id: user.id,
+          original_amount_kes: amount // Keep track of original KES amount
         }
       });
 
@@ -110,8 +123,9 @@ export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '
 
       // Store payment info in localStorage for success handling
       localStorage.setItem('pending_payment', JSON.stringify({
-        amount,
+        amount: convertedAmount,
         currency,
+        original_amount_kes: amount,
         order_tracking_id: data.order_tracking_id,
         merchant_reference: data.merchant_reference
       }));
@@ -139,7 +153,7 @@ export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '
   return (
     <Button 
       onClick={handlePayment}
-      disabled={loading || amount <= 0}
+      disabled={loading || convertedAmount <= 0}
       className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 sm:px-6 rounded-lg transition-colors text-sm sm:text-base"
     >
       {loading ? (
@@ -151,7 +165,12 @@ export function PesaPalButton({ amount, onSuccess, userEmail = '', userPhone = '
         <div className="flex items-center gap-2 justify-center">
           <span>💳</span>
           <span className="text-xs sm:text-sm">
-            Pay {currency} {amount} with {currency === 'XAF' ? 'Mobile Money' : 'M-Pesa'}
+            Pay {currency} {convertedAmount} with {currency === 'XAF' ? 'Mobile Money' : 'M-Pesa'}
+            {currency === 'XAF' && (
+              <div className="text-xs opacity-75">
+                (≈ KES {amount})
+              </div>
+            )}
           </span>
         </div>
       )}
