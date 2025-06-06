@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-// Use the actual Match type structure from the database
+// Use the Match type from useRealTimeMatches
 interface Match {
   id: string;
   title: string;

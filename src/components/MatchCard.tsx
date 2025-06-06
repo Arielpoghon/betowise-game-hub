@@ -3,20 +3,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
+// Use the Match type from useRealTimeMatches hook
 interface Match {
   id: string;
   title: string;
   home_team: string;
   away_team: string;
-  home_odds: number | string;
-  away_odds: number | string;
-  draw_odds?: number | string;
-  start_time: string;
-  status: string;
+  league: string;
+  country: string;
   sport: string;
-  league?: string;
-  country?: string;
-  created_at: string;
+  status: string;
+  start_time: string;
+  match_date: string;
+  home_score: number | null;
+  away_score: number | null;
+  home_odds: string;
+  draw_odds: string | null;
+  away_odds: string;
+  external_id: string;
 }
 
 interface MatchCardProps {
