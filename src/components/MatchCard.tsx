@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { MatchCountdown } from './MatchCountdown';
 
 // Use the Match type from useRealTimeMatches hook
 interface Match {
@@ -21,6 +22,9 @@ interface Match {
   draw_odds: string | null;
   away_odds: string;
   external_id: string;
+  current_minute?: number;
+  half_number?: number;
+  is_halftime?: boolean;
 }
 
 interface MatchCardProps {
@@ -40,12 +44,42 @@ export function MatchCard({ match, onBet, disabled = false }: MatchCardProps) {
       <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg font-semibold">{match.title}</CardTitle>
-          <Badge className={isOpen ? 'bg-green-500' : 'bg-gray-500'}>
+          <Badge className={
+            match.status === 'live' ? 'bg-green-500' : 
+            match.status === 'upcoming' ? 'bg-blue-500' : 
+            'bg-gray-500'
+          }>
             {match.status}
           </Badge>
         </div>
+        
+        {/* Live Scores Display */}
+        {match.status === 'live' && (match.home_score !== null || match.away_score !== null) && (
+          <div className="text-center py-2">
+            <div className="text-2xl font-bold">
+              {match.home_team}: {match.home_score || 0} - {match.away_score || 0} :{match.away_team}
+            </div>
+          </div>
+        )}
+        
+        {/* Countdown Timer */}
+        <MatchCountdown 
+          startTime={match.start_time}
+          status={match.status}
+          currentMinute={match.current_minute}
+          halfNumber={match.half_number}
+          isHalftime={match.is_halftime}
+        />
+        
         <div className="text-sm text-muted-foreground space-y-1">
-          <p>{new Date(match.start_time).toLocaleString()}</p>
+          <p>{new Date(match.start_time).toLocaleString('en-US', {
+            timeZone: 'Africa/Nairobi',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })} EAT</p>
           {match.league && <p className="font-medium">{match.league}</p>}
           {match.country && <p>{match.country}</p>}
         </div>

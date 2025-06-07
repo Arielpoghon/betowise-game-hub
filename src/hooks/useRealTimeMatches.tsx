@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useGameTimer } from './useGameTimer';
 
 interface Match {
   id: string;
@@ -37,6 +38,12 @@ interface Match {
   first_half_result_odds: any | null;
   total_goals_odds: any | null;
   updated_at: string | null;
+  current_minute: number | null;
+  half_number: number | null;
+  is_halftime: boolean | null;
+  actual_start_time: string | null;
+  halftime_start_time: string | null;
+  finished_at: string | null;
 }
 
 export function useRealTimeMatches() {
@@ -44,6 +51,9 @@ export function useRealTimeMatches() {
   const [loading, setLoading] = useState(false);
   const [selectedSport, setSelectedSport] = useState('All');
   const { toast } = useToast();
+
+  // Use the game timer hook to automatically update game statuses
+  useGameTimer();
 
   const fetchMatches = async () => {
     try {
@@ -116,8 +126,6 @@ export function useRealTimeMatches() {
   useEffect(() => {
     fetchMatches();
   }, [selectedSport]);
-
-  // Remove auto-refresh - no more constant updates
 
   const liveMatches = matches.filter(match => match.status === 'live');
   const upcomingMatches = matches.filter(match => match.status === 'upcoming');
