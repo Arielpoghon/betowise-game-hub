@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +25,11 @@ interface Match {
   current_minute: number | null;
   half_number: number | null;
   is_halftime: boolean | null;
+  actual_start_time: string | null;
+  halftime_start_time: string | null;
+  finished_at: string | null;
+  game_duration_minutes: number | null;
+  halftime_duration_minutes: number | null;
 }
 
 export function GameManager() {
@@ -65,7 +69,19 @@ export function GameManager() {
         variant: 'destructive'
       });
     } else {
-      setMatches(data || []);
+      // Ensure all required fields exist with defaults
+      const formattedMatches = (data || []).map(match => ({
+        ...match,
+        current_minute: match.current_minute || 0,
+        half_number: match.half_number || 1,
+        is_halftime: match.is_halftime || false,
+        actual_start_time: match.actual_start_time || null,
+        halftime_start_time: match.halftime_start_time || null,
+        finished_at: match.finished_at || null,
+        game_duration_minutes: match.game_duration_minutes || 90,
+        halftime_duration_minutes: match.halftime_duration_minutes || 10
+      }));
+      setMatches(formattedMatches);
     }
     setLoading(false);
   };

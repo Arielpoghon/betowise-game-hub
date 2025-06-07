@@ -44,6 +44,8 @@ interface Match {
   actual_start_time: string | null;
   halftime_start_time: string | null;
   finished_at: string | null;
+  game_duration_minutes: number | null;
+  halftime_duration_minutes: number | null;
 }
 
 export function useRealTimeMatches() {
@@ -77,12 +79,20 @@ export function useRealTimeMatches() {
         return;
       }
 
-      // Convert numeric odds to strings for consistency
+      // Convert numeric odds to strings for consistency and ensure all required fields exist
       const formattedMatches = (data || []).map(match => ({
         ...match,
         home_odds: match.home_odds?.toString() || '1.00',
         draw_odds: match.draw_odds?.toString() || null,
-        away_odds: match.away_odds?.toString() || '1.00'
+        away_odds: match.away_odds?.toString() || '1.00',
+        current_minute: match.current_minute || 0,
+        half_number: match.half_number || 1,
+        is_halftime: match.is_halftime || false,
+        actual_start_time: match.actual_start_time || null,
+        halftime_start_time: match.halftime_start_time || null,
+        finished_at: match.finished_at || null,
+        game_duration_minutes: match.game_duration_minutes || 90,
+        halftime_duration_minutes: match.halftime_duration_minutes || 10
       }));
 
       setMatches(formattedMatches);
