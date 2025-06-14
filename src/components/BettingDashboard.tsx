@@ -1,7 +1,7 @@
+
 import { useEffect, useState } from 'react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
-import { BetDialog } from './BetDialog';
 import { DepositDialog } from './DepositDialog';
 import { WithdrawalDialog } from './WithdrawalDialog';
 import { FooterDescription } from './FooterDescription';
@@ -17,24 +17,14 @@ import { DashboardFooter } from './dashboard/DashboardFooter';
 // Use the Match type from useRealTimeMatches
 type Match = ReturnType<typeof useRealTimeMatches>['matches'][0];
 
-interface BetDialogData {
-  match: Match;
-  market: { id: string; name: string; market_type: string };
-  odds: { id: string; outcome: string; odds: number };
-}
-
 export function BettingDashboard() {
   const { profile, loading, fetchProfile, updateBalance } = useUserProfile();
   const { toast } = useToast();
-  const [betDialogData, setBetDialogData] = useState<BetDialogData | null>(null);
   const [depositDialogOpen, setDepositDialogOpen] = useState(false);
   const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
   
   const { matches, loading: matchesLoading } = useRealTimeMatches();
   const { currentBetslip, DAILY_BETSLIP_FEE, addBetToBetslip } = useBetslip();
-
-  // Minimum balance required to place bets
-  const MIN_BETTING_BALANCE = 499;
 
   useEffect(() => {
     // Check for payment success/failure in URL params
@@ -80,29 +70,19 @@ export function BettingDashboard() {
       return;
     }
 
-    setBetDialogData({ 
-      match, 
-      market: { id: 'winner', name: 'Match Winner', market_type: 'winner' },
-      odds: { id: 'team_odds', outcome: team, odds }
+    // Add bet to betslip for tracking (bet is already placed in database by MatchCard)
+    addBetToBetslip({
+      matchId: match.id,
+      matchTitle: match.title,
+      team: team,
+      odds: odds,
+      amount: 100 // Default amount used in MatchCard
     });
-  };
 
-  const handleBetSuccess = async (betAmount: number) => {
-    if (profile && betDialogData) {
-      // Add bet to betslip for tracking
-      addBetToBetslip({
-        matchId: betDialogData.match.id,
-        matchTitle: betDialogData.match.title,
-        team: betDialogData.odds.outcome,
-        odds: betDialogData.odds.odds,
-        amount: betAmount
-      });
-
-      toast({
-        title: "Bet placed successfully!",
-        description: `You bet KES ${betAmount} on ${betDialogData.match.title}. Good luck!`,
-      });
-    }
+    toast({
+      title: "Bet placed successfully!",
+      description: `You bet KES 100 on ${team} for ${match.title}. Good luck!`,
+    });
   };
 
   const handleDepositSuccess = async (depositAmount: number) => {
@@ -192,18 +172,6 @@ export function BettingDashboard() {
       <DashboardFooter />
 
       {/* Dialogs */}
-      {betDialogData && (
-        <BetDialog
-          open={!!betDialogData}
-          onClose={() => setBetDialogData(null)}
-          match={betDialogData.match}
-          market={betDialogData.market}
-          odds={betDialogData.odds}
-          userBalance={profile?.balance || 0}
-          onConfirm={handleBetSuccess}
-        />
-      )}
-
       <DepositDialog
         open={depositDialogOpen}
         onClose={() => setDepositDialogOpen(false)}

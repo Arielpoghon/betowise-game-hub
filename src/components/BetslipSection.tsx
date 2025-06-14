@@ -5,13 +5,78 @@ import { Badge } from '@/components/ui/badge';
 import { Trash2, Calendar, Clock } from 'lucide-react';
 import { useBetslip } from '@/hooks/useBetslip';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useState } from 'react';
 
 export function BetslipSection() {
-  const { currentBetslip, loading, DAILY_BETSLIP_FEE, removeBetFromBetslip, payForBetslip } = useBetslip();
+  const { currentBetslip, loading, DAILY_BETSLIP_FEE, removeBetFromBetslip, refreshBetslip } = useBetslip();
   const { profile } = useUserProfile();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isPaymentProcessing, setIsPaymentProcessing] = useState(false);
 
   const handlePayForBetslip = async () => {
-    await payForBetslip();
+    if (!user || !profile) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to pay for betslip.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsPaymentProcessing(true);
+
+    try {
+      // Call the PesaPal payment function
+      const { data, error } = await supabase.functions.invoke('pesapal-payment', {
+        body: {
+          amount: DAILY_BETSLIP_FEE,
+          email: user.email,
+          phone_number: profile.phone_number || '254700000000',
+          description: `Daily Betslip Fee - ${new Date().toDateString()}`,
+          user_id: user.id
+        }
+      });
+
+      if (error) {
+        console.error('Payment error:', error);
+        toast({
+          title: "Payment failed",
+          description: "Failed to initiate payment. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (data.success && data.redirect_url) {
+        // Open payment page in new tab
+        window.open(data.redirect_url, '_blank');
+        
+        toast({
+          title: "Payment initiated",
+          description: "Complete your payment in the opened tab.",
+        });
+      } else {
+        toast({
+          title: "Payment failed",
+          description: data.error || "Failed to create payment session.",
+          variant: "destructive"
+        });
+      }
+
+    } catch (error) {
+      console.error('Error initiating payment:', error);
+      toast({
+        title: "Payment failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsPaymentProcessing(false);
+    }
   };
 
   const canAffordBetslip = profile && profile.balance >= DAILY_BETSLIP_FEE;
@@ -65,22 +130,23 @@ export function BetslipSection() {
               {!currentBetslip.isPaid && (
                 <Button 
                   onClick={handlePayForBetslip}
-                  disabled={loading || !canAffordBetslip}
+                  disabled={loading || isPaymentProcessing}
                   className="mt-2"
                   size="sm"
                 >
-                  {loading ? "Processing..." : "Pay Now"}
+                  {isPaymentProcessing ? "Processing..." : "Pay with M-Pesa"}
                 </Button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Insufficient balance warning */}
-        {!currentBetslip.isPaid && !canAffordBetslip && (
-          <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
-            <p className="text-sm text-yellow-700">
-              💡 Insufficient balance. You need KES {DAILY_BETSLIP_FEE} to pay for today's betslip.
+        {/* Payment Instructions */}
+        {!currentBetslip.isPaid && (
+          <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+            <p className="text-sm text-green-700 font-medium mb-1">💳 How to pay:</p>
+            <p className="text-xs text-green-600">
+              Click "Pay with M-Pesa" above. You'll be redirected to complete payment via PesaPal M-Pesa integration.
             </p>
           </div>
         )}
@@ -155,6 +221,19 @@ export function BetslipSection() {
             </div>
           </div>
         )}
+
+        {/* Refresh Button */}
+        <div className="pt-2 border-t">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={refreshBetslip}
+            disabled={loading}
+            className="w-full"
+          >
+            {loading ? "Refreshing..." : "Refresh Betslip"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

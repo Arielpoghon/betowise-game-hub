@@ -4,6 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MatchCountdown } from './MatchCountdown';
 import { Star, Lock } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useState } from 'react';
 
 interface Match {
   id: string;
@@ -38,6 +42,10 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ match, onBet, disabled = false }: MatchCardProps) {
+  const [isPlacingBet, setIsPlacingBet] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
   const isOpen = match.status === 'upcoming' || match.status === 'live';
   const homeOdds = typeof match.home_odds === 'string' ? parseFloat(match.home_odds) : match.home_odds;
   const awayOdds = typeof match.away_odds === 'string' ? parseFloat(match.away_odds) : match.away_odds;
@@ -45,6 +53,88 @@ export function MatchCard({ match, onBet, disabled = false }: MatchCardProps) {
   
   const isFixedMatch = match.is_fixed_match;
   const hasFixedOutcome = isFixedMatch && match.fixed_outcome_set;
+
+  const handleBetClick = async (team: string, odds: number) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to place bets.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (disabled) {
+      toast({
+        title: "Betting disabled",
+        description: "Please pay for today's betslip to place bets.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsPlacingBet(true);
+    
+    try {
+      // Default bet amount for quick betting
+      const defaultAmount = 100;
+
+      // Place the bet directly
+      const { error: betError } = await supabase
+        .from('bets')
+        .insert({
+          user_id: user.id,
+          match_id: match.id,
+          amount: defaultAmount,
+          team_choice: team.toLowerCase(),
+          status: 'pending'
+        });
+
+      if (betError) {
+        console.error('Error placing bet:', betError);
+        toast({
+          title: 'Error',
+          description: 'Failed to place bet. Please try again.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Update user balance
+      const { error: balanceError } = await supabase.rpc('update_user_balance', {
+        user_id: user.id,
+        amount_to_add: -defaultAmount
+      });
+
+      if (balanceError) {
+        console.error('Error updating balance:', balanceError);
+        toast({
+          title: 'Error',
+          description: 'Failed to update balance. Please contact support.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Call the onBet callback to update the betslip
+      onBet(match, team, odds);
+
+      toast({
+        title: 'Bet placed!',
+        description: `Successfully placed KES ${defaultAmount} bet on ${team}`,
+      });
+
+    } catch (error) {
+      console.error('Error placing bet:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsPlacingBet(false);
+    }
+  };
   
   return (
     <Card className={`hover:shadow-md transition-shadow ${isFixedMatch ? 'border-green-500 bg-green-50' : ''}`}>
@@ -135,8 +225,8 @@ export function MatchCard({ match, onBet, disabled = false }: MatchCardProps) {
             <>
               <div className="grid grid-cols-2 gap-2">
                 <Button
-                  onClick={() => onBet(match, match.home_team || 'Home', homeOdds || 1.0)}
-                  disabled={disabled}
+                  onClick={() => handleBetClick(match.home_team || 'Home', homeOdds || 1.0)}
+                  disabled={disabled || isPlacingBet}
                   variant="default"
                   className={`w-full ${isFixedMatch ? 'bg-green-600 hover:bg-green-700' : ''}`}
                   size="sm"
@@ -151,8 +241,8 @@ export function MatchCard({ match, onBet, disabled = false }: MatchCardProps) {
                 </Button>
                 
                 <Button
-                  onClick={() => onBet(match, match.away_team || 'Away', awayOdds || 1.0)}
-                  disabled={disabled}
+                  onClick={() => handleBetClick(match.away_team || 'Away', awayOdds || 1.0)}
+                  disabled={disabled || isPlacingBet}
                   variant="default"
                   className={`w-full ${isFixedMatch ? 'bg-green-600 hover:bg-green-700' : ''}`}
                   size="sm"
@@ -169,8 +259,8 @@ export function MatchCard({ match, onBet, disabled = false }: MatchCardProps) {
               
               {drawOdds && (
                 <Button
-                  onClick={() => onBet(match, 'Draw', drawOdds)}
-                  disabled={disabled}
+                  onClick={() => handleBetClick('Draw', drawOdds)}
+                  disabled={disabled || isPlacingBet}
                   variant="outline"
                   className={`w-full ${isFixedMatch ? 'border-green-600 text-green-600 hover:bg-green-50' : ''}`}
                   size="sm"
@@ -191,6 +281,13 @@ export function MatchCard({ match, onBet, disabled = false }: MatchCardProps) {
           {match.status === 'finished' && (
             <div className="text-center py-2">
               <p className="text-sm text-gray-500">This match has finished</p>
+            </div>
+          )}
+
+          {/* Show betting status */}
+          {isPlacingBet && (
+            <div className="text-center py-2">
+              <p className="text-sm text-blue-600">Placing bet...</p>
             </div>
           )}
         </div>
