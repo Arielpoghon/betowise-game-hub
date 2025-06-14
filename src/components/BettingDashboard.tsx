@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
@@ -6,7 +5,9 @@ import { BetDialog } from './BetDialog';
 import { DepositDialog } from './DepositDialog';
 import { WithdrawalDialog } from './WithdrawalDialog';
 import { FooterDescription } from './FooterDescription';
+import { BetslipSection } from './BetslipSection';
 import { useRealTimeMatches } from '@/hooks/useRealTimeMatches';
+import { useBetslip } from '@/hooks/useBetslip';
 import { DashboardHeader } from './dashboard/DashboardHeader';
 import { DashboardNavigation } from './dashboard/DashboardNavigation';
 import { DashboardWelcome } from './dashboard/DashboardWelcome';
@@ -30,6 +31,7 @@ export function BettingDashboard() {
   const [withdrawalDialogOpen, setWithdrawalDialogOpen] = useState(false);
   
   const { matches, loading: matchesLoading } = useRealTimeMatches();
+  const { currentBetslip, DAILY_BETSLIP_FEE, addBetToBetslip } = useBetslip();
 
   // Minimum balance required to place bets
   const MIN_BETTING_BALANCE = 499;
@@ -68,11 +70,11 @@ export function BettingDashboard() {
   }, [toast, fetchProfile, profile, updateBalance]);
 
   const handlePlaceBet = (match: Match, team: string, odds: number) => {
-    // Check if user has minimum balance to place bets
-    if (!profile || profile.balance < MIN_BETTING_BALANCE) {
+    // Check if user has paid for today's betslip
+    if (!currentBetslip?.isPaid) {
       toast({
-        title: "Insufficient funds",
-        description: `You need at least KES ${MIN_BETTING_BALANCE} to place a bet. Please deposit funds first.`,
+        title: "Betslip payment required",
+        description: `Please pay KES ${DAILY_BETSLIP_FEE} for today's betslip to place bets.`,
         variant: "destructive"
       });
       return;
@@ -86,12 +88,19 @@ export function BettingDashboard() {
   };
 
   const handleBetSuccess = async (betAmount: number) => {
-    if (profile) {
-      const newBalance = profile.balance - betAmount;
-      await updateBalance(newBalance);
+    if (profile && betDialogData) {
+      // Add bet to betslip for tracking
+      addBetToBetslip({
+        matchId: betDialogData.match.id,
+        matchTitle: betDialogData.match.title,
+        team: betDialogData.odds.outcome,
+        odds: betDialogData.odds.odds,
+        amount: betAmount
+      });
+
       toast({
         title: "Bet placed successfully!",
-        description: `You bet KES ${betAmount}. Good luck!`,
+        description: `You bet KES ${betAmount} on ${betDialogData.match.title}. Good luck!`,
       });
     }
   };
@@ -151,16 +160,29 @@ export function BettingDashboard() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <DashboardWelcome minBettingBalance={MIN_BETTING_BALANCE} />
+        <DashboardWelcome minBettingBalance={DAILY_BETSLIP_FEE} />
 
-        {/* Matches Grid */}
-        <div className="space-y-4">
-          <MatchesGrid 
-            matches={matches}
-            loading={matchesLoading}
-            onBet={handlePlaceBet}
-            disabled={!profile || profile.balance < MIN_BETTING_BALANCE}
-          />
+        {/* Main Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Betslip Section - Left Column on Large Screens */}
+          <div className="lg:col-span-1 order-2 lg:order-1">
+            <BetslipSection />
+          </div>
+
+          {/* Matches Grid - Right Columns */}
+          <div className="lg:col-span-2 order-1 lg:order-2">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Fixed Matches
+              </h3>
+              <MatchesGrid 
+                matches={matches}
+                loading={matchesLoading}
+                onBet={handlePlaceBet}
+                disabled={!profile || !currentBetslip?.isPaid}
+              />
+            </div>
+          </div>
         </div>
       </main>
 
