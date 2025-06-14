@@ -9,6 +9,7 @@ interface UserProfile {
   balance: number;
   auth_user_id: string;
   created_at: string;
+  phone_number?: string; // Add optional phone_number property
 }
 
 export function useUserProfile() {

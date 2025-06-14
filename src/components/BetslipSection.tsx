@@ -35,7 +35,7 @@ export function BetslipSection() {
         body: {
           amount: DAILY_BETSLIP_FEE,
           email: user.email,
-          phone_number: profile.phone_number || '254700000000',
+          phone_number: profile.phone_number || '254700000000', // Use default if phone_number is undefined
           description: `Daily Betslip Fee - ${new Date().toDateString()}`,
           user_id: user.id
         }
