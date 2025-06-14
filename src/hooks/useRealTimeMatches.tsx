@@ -46,6 +46,11 @@ interface Match {
   finished_at: string | null;
   game_duration_minutes: number | null;
   halftime_duration_minutes: number | null;
+  is_fixed_match: boolean | null;
+  fixed_home_score: number | null;
+  fixed_away_score: number | null;
+  fixed_outcome_set: boolean | null;
+  admin_notes: string | null;
 }
 
 export function useRealTimeMatches() {
@@ -54,14 +59,12 @@ export function useRealTimeMatches() {
   const [selectedSport, setSelectedSport] = useState('All');
   const { toast } = useToast();
 
-  // Use the game timer hook to automatically update game statuses
   useGameTimer();
 
   const fetchMatches = async () => {
     try {
       setLoading(true);
       
-      // Only get matches from database - no external API calls
       let query = supabase
         .from('matches')
         .select('*')
@@ -75,11 +78,9 @@ export function useRealTimeMatches() {
 
       if (error) {
         console.error('Database error:', error);
-        // Don't show toast for database errors
         return;
       }
 
-      // Convert numeric odds to strings for consistency and ensure all required fields exist
       const formattedMatches = (data || []).map((match: any) => ({
         ...match,
         home_odds: match.home_odds?.toString() || '1.00',
@@ -92,13 +93,17 @@ export function useRealTimeMatches() {
         halftime_start_time: match.halftime_start_time ?? null,
         finished_at: match.finished_at ?? null,
         game_duration_minutes: match.game_duration_minutes ?? 90,
-        halftime_duration_minutes: match.halftime_duration_minutes ?? 10
+        halftime_duration_minutes: match.halftime_duration_minutes ?? 10,
+        is_fixed_match: match.is_fixed_match ?? false,
+        fixed_home_score: match.fixed_home_score ?? null,
+        fixed_away_score: match.fixed_away_score ?? null,
+        fixed_outcome_set: match.fixed_outcome_set ?? false,
+        admin_notes: match.admin_notes ?? null
       }));
 
       setMatches(formattedMatches);
     } catch (error: any) {
       console.error('Error fetching matches:', error);
-      // Silently handle errors - no more annoying popups
     } finally {
       setLoading(false);
     }
@@ -108,7 +113,6 @@ export function useRealTimeMatches() {
     setSelectedSport(sport);
   };
 
-  // Real-time subscription for matches
   useEffect(() => {
     const channel = supabase
       .channel('matches-changes')
@@ -121,7 +125,6 @@ export function useRealTimeMatches() {
         },
         (payload) => {
           console.log('Match update received:', payload);
-          // Refresh matches when changes occur
           fetchMatches();
         }
       )
@@ -132,7 +135,6 @@ export function useRealTimeMatches() {
     };
   }, []);
 
-  // Fetch matches only when component mounts or sport changes
   useEffect(() => {
     fetchMatches();
   }, [selectedSport]);
@@ -141,11 +143,17 @@ export function useRealTimeMatches() {
   const upcomingMatches = matches.filter(match => match.status === 'upcoming');
   const finishedMatches = matches.filter(match => match.status === 'finished');
 
+  // Separate fixed matches for easier identification
+  const fixedMatches = matches.filter(match => match.is_fixed_match);
+  const regularMatches = matches.filter(match => !match.is_fixed_match);
+
   return {
     matches,
     liveMatches,
     upcomingMatches,
     finishedMatches,
+    fixedMatches,
+    regularMatches,
     loading,
     selectedSport,
     changeSport,

@@ -1,15 +1,28 @@
+
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export function useGameTimer() {
   useEffect(() => {
-    // Call a simple query to trigger any database function we might set up later
-    // For now, we'll just do a simple update to keep connections active
     const updateGameStatus = async () => {
       try {
-        // We don't have the RPC function yet, so we'll skip this for now
-        // The automatic updates will happen through database triggers
-        console.log('Game timer tick - automatic updates handled by database');
+        // Call the function to finish fixed matches automatically
+        const { error } = await supabase.rpc('finish_fixed_matches');
+        
+        if (error) {
+          console.error('Error finishing fixed matches:', error);
+        } else {
+          console.log('Fixed matches processing completed');
+        }
+
+        // Also call the bet outcomes processing
+        const { error: betError } = await supabase.rpc('process_bet_outcomes');
+        
+        if (betError) {
+          console.error('Error processing bet outcomes:', betError);
+        } else {
+          console.log('Bet outcomes processing completed');
+        }
       } catch (error) {
         console.error('Error in game timer:', error);
       }

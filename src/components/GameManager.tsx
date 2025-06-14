@@ -1,9 +1,12 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -30,6 +33,11 @@ interface Match {
   finished_at: string | null;
   game_duration_minutes: number | null;
   halftime_duration_minutes: number | null;
+  is_fixed_match: boolean | null;
+  fixed_home_score: number | null;
+  fixed_away_score: number | null;
+  fixed_outcome_set: boolean | null;
+  admin_notes: string | null;
 }
 
 export function GameManager() {
@@ -45,7 +53,11 @@ export function GameManager() {
     start_time: '',
     home_odds: 1.90,
     draw_odds: 3.00,
-    away_odds: 4.45
+    away_odds: 4.45,
+    is_fixed_match: false,
+    fixed_home_score: 0,
+    fixed_away_score: 0,
+    admin_notes: ''
   });
   const { toast } = useToast();
 
@@ -59,7 +71,7 @@ export function GameManager() {
       .from('matches')
       .select('*')
       .order('start_time', { ascending: false })
-      .limit(10);
+      .limit(20);
 
     if (error) {
       console.error('Error fetching matches:', error);
@@ -69,7 +81,6 @@ export function GameManager() {
         variant: 'destructive'
       });
     } else {
-      // Ensure all required fields exist with defaults
       const formattedMatches = (data || []).map((match: any) => ({
         ...match,
         current_minute: match.current_minute ?? 0,
@@ -79,7 +90,12 @@ export function GameManager() {
         halftime_start_time: match.halftime_start_time ?? null,
         finished_at: match.finished_at ?? null,
         game_duration_minutes: match.game_duration_minutes ?? 90,
-        halftime_duration_minutes: match.halftime_duration_minutes ?? 10
+        halftime_duration_minutes: match.halftime_duration_minutes ?? 10,
+        is_fixed_match: match.is_fixed_match ?? false,
+        fixed_home_score: match.fixed_home_score ?? null,
+        fixed_away_score: match.fixed_away_score ?? null,
+        fixed_outcome_set: match.fixed_outcome_set ?? false,
+        admin_notes: match.admin_notes ?? null
       }));
       setMatches(formattedMatches);
     }
@@ -96,27 +112,35 @@ export function GameManager() {
       return;
     }
 
-    // Convert to EAT timezone
     const startTimeEAT = new Date(newMatch.start_time).toISOString();
+    
+    const matchData = {
+      title: newMatch.title,
+      home_team: newMatch.home_team,
+      away_team: newMatch.away_team,
+      league: newMatch.league,
+      country: newMatch.country,
+      sport: newMatch.sport,
+      status: 'upcoming',
+      start_time: startTimeEAT,
+      match_date: startTimeEAT.split('T')[0],
+      home_odds: newMatch.home_odds,
+      draw_odds: newMatch.draw_odds,
+      away_odds: newMatch.away_odds,
+      home_score: null,
+      away_score: null,
+      is_fixed_match: newMatch.is_fixed_match,
+      fixed_home_score: newMatch.is_fixed_match ? newMatch.fixed_home_score : null,
+      fixed_away_score: newMatch.is_fixed_match ? newMatch.fixed_away_score : null,
+      fixed_outcome_set: newMatch.is_fixed_match,
+      admin_notes: newMatch.admin_notes || null
+    };
 
-    const { error } = await supabase
+    const { data: matchResult, error } = await supabase
       .from('matches')
-      .insert({
-        title: newMatch.title,
-        home_team: newMatch.home_team,
-        away_team: newMatch.away_team,
-        league: newMatch.league,
-        country: newMatch.country,
-        sport: newMatch.sport,
-        status: 'upcoming',
-        start_time: startTimeEAT,
-        match_date: startTimeEAT.split('T')[0],
-        home_odds: newMatch.home_odds,
-        draw_odds: newMatch.draw_odds,
-        away_odds: newMatch.away_odds,
-        home_score: null,
-        away_score: null
-      });
+      .insert(matchData)
+      .select()
+      .single();
 
     if (error) {
       console.error('Error adding match:', error);
@@ -125,25 +149,46 @@ export function GameManager() {
         description: 'Failed to add match',
         variant: 'destructive'
       });
-    } else {
-      toast({
-        title: 'Success',
-        description: 'Match added successfully',
-      });
-      setNewMatch({
-        title: '',
-        home_team: '',
-        away_team: '',
-        league: '',
-        country: '',
-        sport: 'Soccer',
-        start_time: '',
-        home_odds: 1.90,
-        draw_odds: 3.00,
-        away_odds: 4.45
-      });
-      fetchMatches();
+      return;
     }
+
+    // If it's a fixed match, also create the fixed outcome record
+    if (newMatch.is_fixed_match && matchResult) {
+      const { error: outcomeError } = await supabase
+        .from('fixed_match_outcomes')
+        .insert({
+          match_id: matchResult.id,
+          predicted_home_score: newMatch.fixed_home_score,
+          predicted_away_score: newMatch.fixed_away_score
+        });
+
+      if (outcomeError) {
+        console.error('Error adding fixed outcome:', outcomeError);
+      }
+    }
+
+    toast({
+      title: 'Success',
+      description: `${newMatch.is_fixed_match ? 'Fixed' : 'Regular'} match added successfully`,
+    });
+    
+    setNewMatch({
+      title: '',
+      home_team: '',
+      away_team: '',
+      league: '',
+      country: '',
+      sport: 'Soccer',
+      start_time: '',
+      home_odds: 1.90,
+      draw_odds: 3.00,
+      away_odds: 4.45,
+      is_fixed_match: false,
+      fixed_home_score: 0,
+      fixed_away_score: 0,
+      admin_notes: ''
+    });
+    fetchMatches();
   };
 
   const updateScore = async (matchId: string, homeScore: number, awayScore: number) => {
@@ -192,6 +237,37 @@ export function GameManager() {
       toast({
         title: 'Success',
         description: 'Match status updated successfully',
+      });
+      fetchMatches();
+    }
+  };
+
+  const finishFixedMatch = async (matchId: string) => {
+    const match = matches.find(m => m.id === matchId);
+    if (!match || !match.is_fixed_match) return;
+
+    const { error } = await supabase
+      .from('matches')
+      .update({
+        status: 'finished',
+        home_score: match.fixed_home_score,
+        away_score: match.fixed_away_score,
+        finished_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', matchId);
+
+    if (error) {
+      console.error('Error finishing fixed match:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to finish fixed match',
+        variant: 'destructive'
+      });
+    } else {
+      toast({
+        title: 'Success',
+        description: 'Fixed match finished with predicted score',
       });
       fetchMatches();
     }
@@ -314,8 +390,58 @@ export function GameManager() {
             </div>
           </div>
 
+          {/* Fixed Match Section */}
+          <div className="border-t pt-4">
+            <div className="flex items-center space-x-2 mb-4">
+              <Switch
+                id="is_fixed_match"
+                checked={newMatch.is_fixed_match}
+                onCheckedChange={(checked) => setNewMatch({ ...newMatch, is_fixed_match: checked })}
+              />
+              <Label htmlFor="is_fixed_match" className="font-semibold text-green-600">
+                Fixed Match (Predetermined Outcome)
+              </Label>
+            </div>
+
+            {newMatch.is_fixed_match && (
+              <div className="space-y-4 bg-green-50 p-4 rounded-lg">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="fixed_home_score">Fixed Home Score</Label>
+                    <Input
+                      id="fixed_home_score"
+                      type="number"
+                      min="0"
+                      value={newMatch.fixed_home_score}
+                      onChange={(e) => setNewMatch({ ...newMatch, fixed_home_score: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="fixed_away_score">Fixed Away Score</Label>
+                    <Input
+                      id="fixed_away_score"
+                      type="number"
+                      min="0"
+                      value={newMatch.fixed_away_score}
+                      onChange={(e) => setNewMatch({ ...newMatch, fixed_away_score: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="admin_notes">Admin Notes</Label>
+                  <Textarea
+                    id="admin_notes"
+                    value={newMatch.admin_notes}
+                    onChange={(e) => setNewMatch({ ...newMatch, admin_notes: e.target.value })}
+                    placeholder="Internal notes about this fixed match..."
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <Button onClick={addMatch} className="w-full">
-            Add Match
+            Add {newMatch.is_fixed_match ? 'Fixed' : 'Regular'} Match
           </Button>
         </CardContent>
       </Card>
@@ -330,9 +456,16 @@ export function GameManager() {
           ) : (
             <div className="space-y-4">
               {matches.map((match) => (
-                <div key={match.id} className="border rounded-lg p-4 space-y-3">
+                <div key={match.id} className={`border rounded-lg p-4 space-y-3 ${match.is_fixed_match ? 'bg-green-50 border-green-200' : ''}`}>
                   <div className="flex justify-between items-center">
-                    <h3 className="font-semibold">{match.title}</h3>
+                    <div>
+                      <h3 className="font-semibold">{match.title}</h3>
+                      {match.is_fixed_match && (
+                        <span className="text-xs bg-green-500 text-white px-2 py-1 rounded">
+                          FIXED MATCH: {match.fixed_home_score} - {match.fixed_away_score}
+                        </span>
+                      )}
+                    </div>
                     <span className={`px-2 py-1 rounded text-sm ${
                       match.status === 'live' ? 'bg-green-100 text-green-800' :
                       match.status === 'upcoming' ? 'bg-blue-100 text-blue-800' :
@@ -344,24 +477,26 @@ export function GameManager() {
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>Home Score</Label>
+                      <Label>Current Home Score</Label>
                       <Input
                         type="number"
                         value={match.home_score || 0}
                         onChange={(e) => updateScore(match.id, parseInt(e.target.value) || 0, match.away_score || 0)}
+                        disabled={match.is_fixed_match && match.status === 'finished'}
                       />
                     </div>
                     <div>
-                      <Label>Away Score</Label>
+                      <Label>Current Away Score</Label>
                       <Input
                         type="number"
                         value={match.away_score || 0}
                         onChange={(e) => updateScore(match.id, match.home_score || 0, parseInt(e.target.value) || 0)}
+                        disabled={match.is_fixed_match && match.status === 'finished'}
                       />
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button 
                       size="sm" 
                       variant="outline"
@@ -386,13 +521,26 @@ export function GameManager() {
                     >
                       Set Finished
                     </Button>
+                    
+                    {match.is_fixed_match && match.status !== 'finished' && (
+                      <Button 
+                        size="sm" 
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => finishFixedMatch(match.id)}
+                      >
+                        Finish with Fixed Score
+                      </Button>
+                    )}
                   </div>
                   
-                  <p className="text-sm text-gray-600">
-                    Start Time: {new Date(match.start_time).toLocaleString('en-US', {
+                  <div className="text-sm text-gray-600">
+                    <p>Start Time: {new Date(match.start_time).toLocaleString('en-US', {
                       timeZone: 'Africa/Nairobi'
-                    })} EAT
-                  </p>
+                    })} EAT</p>
+                    {match.admin_notes && (
+                      <p className="text-green-600 font-medium">Notes: {match.admin_notes}</p>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

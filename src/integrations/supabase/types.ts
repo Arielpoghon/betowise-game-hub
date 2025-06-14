@@ -39,6 +39,36 @@ export type Database = {
         }
         Relationships: []
       }
+      betslip_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          payment_date: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          payment_date: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          payment_date?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_verifications: {
         Row: {
           created_at: string
@@ -66,8 +96,82 @@ export type Database = {
         }
         Relationships: []
       }
+      fixed_match_outcomes: {
+        Row: {
+          created_at: string
+          id: string
+          match_id: string
+          predicted_away_score: number
+          predicted_home_score: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_id: string
+          predicted_away_score: number
+          predicted_home_score: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_id?: string
+          predicted_away_score?: number
+          predicted_home_score?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_fixed_outcomes_match"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      match_schedules: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          end_at: string
+          go_live_at: string
+          id: string
+          match_id: string
+          start_countdown_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number
+          end_at: string
+          go_live_at: string
+          id?: string
+          match_id: string
+          start_countdown_at: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          end_at?: string
+          go_live_at?: string
+          id?: string
+          match_id?: string
+          start_countdown_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_schedules_match"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
+          admin_notes: string | null
           asian_handicap_odds: number | null
           attendance: number | null
           away_odds: number | null
@@ -81,11 +185,15 @@ export type Database = {
           draw_odds: number | null
           external_id: string | null
           first_half_result_odds: Json | null
+          fixed_away_score: number | null
+          fixed_home_score: number | null
+          fixed_outcome_set: boolean | null
           home_odds: number | null
           home_score: number | null
           home_team: string | null
           home_team_logo: string | null
           id: string
+          is_fixed_match: boolean | null
           league: string | null
           match_date: string | null
           match_notes: string | null
@@ -104,6 +212,7 @@ export type Database = {
           weather_conditions: string | null
         }
         Insert: {
+          admin_notes?: string | null
           asian_handicap_odds?: number | null
           attendance?: number | null
           away_odds?: number | null
@@ -117,11 +226,15 @@ export type Database = {
           draw_odds?: number | null
           external_id?: string | null
           first_half_result_odds?: Json | null
+          fixed_away_score?: number | null
+          fixed_home_score?: number | null
+          fixed_outcome_set?: boolean | null
           home_odds?: number | null
           home_score?: number | null
           home_team?: string | null
           home_team_logo?: string | null
           id?: string
+          is_fixed_match?: boolean | null
           league?: string | null
           match_date?: string | null
           match_notes?: string | null
@@ -140,6 +253,7 @@ export type Database = {
           weather_conditions?: string | null
         }
         Update: {
+          admin_notes?: string | null
           asian_handicap_odds?: number | null
           attendance?: number | null
           away_odds?: number | null
@@ -153,11 +267,15 @@ export type Database = {
           draw_odds?: number | null
           external_id?: string | null
           first_half_result_odds?: Json | null
+          fixed_away_score?: number | null
+          fixed_home_score?: number | null
+          fixed_outcome_set?: boolean | null
           home_odds?: number | null
           home_score?: number | null
           home_team?: string | null
           home_team_logo?: string | null
           id?: string
+          is_fixed_match?: boolean | null
           league?: string | null
           match_date?: string | null
           match_notes?: string | null
@@ -291,11 +409,53 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawals: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          processed_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          processed_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          processed_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      finish_fixed_matches: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      process_bet_outcomes: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      update_match_status: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       update_user_balance: {
         Args: { user_id: string; amount_to_add: number }
         Returns: undefined

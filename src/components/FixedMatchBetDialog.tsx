@@ -38,7 +38,7 @@ interface Market {
   market_type: string;
 }
 
-interface BetDialogProps {
+interface FixedMatchBetDialogProps {
   open: boolean;
   onClose: () => void;
   onConfirm: (amount: number) => void;
@@ -48,7 +48,7 @@ interface BetDialogProps {
   userBalance: number;
 }
 
-export function BetDialog({ 
+export function FixedMatchBetDialog({ 
   open, 
   onClose, 
   onConfirm, 
@@ -56,7 +56,7 @@ export function BetDialog({
   market,
   odds,
   userBalance 
-}: BetDialogProps) {
+}: FixedMatchBetDialogProps) {
   const [amount, setAmount] = useState('');
   const [isPlacing, setIsPlacing] = useState(false);
   const { toast } = useToast();
@@ -68,6 +68,7 @@ export function BetDialog({
     setIsPlacing(true);
     
     try {
+      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast({
@@ -78,6 +79,7 @@ export function BetDialog({
         return;
       }
 
+      // Place the bet in the database
       const { error: betError } = await supabase
         .from('bets')
         .insert({
@@ -98,6 +100,7 @@ export function BetDialog({
         return;
       }
 
+      // Update user balance
       const { error: balanceError } = await supabase.rpc('update_user_balance', {
         user_id: user.id,
         amount_to_add: -betAmount
@@ -105,6 +108,11 @@ export function BetDialog({
 
       if (balanceError) {
         console.error('Error updating balance:', balanceError);
+        toast({
+          title: 'Error',
+          description: 'Failed to update balance. Please contact support.',
+          variant: 'destructive'
+        });
         return;
       }
 
@@ -112,6 +120,13 @@ export function BetDialog({
       setAmount('');
       onClose();
       
+      toast({
+        title: 'Bet Placed Successfully!',
+        description: match.is_fixed_match 
+          ? `Fixed match bet placed for KES ${betAmount}. Outcome guaranteed!`
+          : `Bet placed for KES ${betAmount}. Good luck!`,
+      });
+
     } catch (error) {
       console.error('Error placing bet:', error);
       toast({
@@ -137,12 +152,12 @@ export function BetDialog({
               <div className="flex items-center gap-1">
                 <Lock className="h-4 w-4 text-green-600" />
                 <Star className="h-4 w-4 text-yellow-500" />
-                <Badge className="bg-green-500 text-white">FIXED</Badge>
               </div>
             )}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Match Info */}
           <div className={`p-3 rounded-lg ${isFixedMatch ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
             <h3 className="font-medium">{match?.title}</h3>
             <p className="text-sm text-muted-foreground">
@@ -152,6 +167,7 @@ export function BetDialog({
               Selection: {odds?.outcome} (Odds: {odds?.odds || '2.0'})
             </p>
             
+            {/* Fixed Match Guarantee */}
             {isFixedMatch && match?.fixed_outcome_set && (
               <div className="mt-2 p-2 bg-green-100 rounded border border-green-300">
                 <div className="flex items-center gap-2 text-green-800">
@@ -162,12 +178,13 @@ export function BetDialog({
                   Final Score: {match.home_team} {match.fixed_home_score} - {match.fixed_away_score} {match.away_team}
                 </p>
                 <p className="text-xs text-green-600 mt-1">
-                  🎯 Fixed match with predetermined result - bet with confidence!
+                  This is a fixed match with a predetermined result. Your bet is guaranteed to win if you choose the correct outcome!
                 </p>
               </div>
             )}
           </div>
           
+          {/* Bet Amount Input */}
           <div>
             <Label htmlFor="amount">Bet Amount (KES)</Label>
             <Input
@@ -185,6 +202,7 @@ export function BetDialog({
             </p>
           </div>
           
+          {/* Potential Winnings */}
           <div className={`p-3 rounded-lg ${isFixedMatch ? 'bg-green-50' : 'bg-gray-50'}`}>
             <div className="flex justify-between text-sm">
               <span>Potential Win:</span>
@@ -199,13 +217,13 @@ export function BetDialog({
               </span>
             </div>
             {isFixedMatch && (
-              <div className="mt-2 text-xs text-green-600 font-medium flex items-center gap-1">
-                <CheckCircle className="h-3 w-3" />
-                Guaranteed return on fixed match!
+              <div className="mt-2 text-xs text-green-600 font-medium">
+                🎯 Guaranteed return on fixed match!
               </div>
             )}
           </div>
           
+          {/* Action Buttons */}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} className="flex-1" disabled={isPlacing}>
               Cancel
